@@ -26,9 +26,18 @@ The build produces a shaded JAR at `target/mcp-osgi-server-1.0.0-SNAPSHOT.jar` t
 ## Testing
 
 ### Running Tests
-Tests are written using JUnit 5 and can be run with:
+Tests are written using JUnit 5. Since tests require the shaded JAR to be built, use one of these commands:
+
 ```bash
+# Build and run tests (recommended)
+mvn verify
+
+# Or build first, then test
+mvn package
 mvn test
+
+# Clean build and test
+mvn clean verify
 ```
 
 ### Test Structure
@@ -95,10 +104,11 @@ void testNewTool() throws Exception {
 - `sendNotification(String method)`: Send a JSON-RPC notification (no response expected)
 
 #### Important Notes
-- The server JAR must be built before running tests: `mvn package`
-- Tests automatically start and stop the server process
+- **The shaded server JAR must be built before running tests**: Use `mvn package` or `mvn verify` (which builds and tests)
+- Tests automatically start and stop the server process for each test method
 - The MCP protocol requires sending `notifications/initialized` after the `initialize` request
-- Responses may take time to arrive; the helper methods have built-in timeouts
+- Responses may take time to arrive; the helper methods have built-in timeouts (5 seconds)
+- If a test fails to start the server, check that the JAR was built successfully with all dependencies
 
 ## Running the Server
 
