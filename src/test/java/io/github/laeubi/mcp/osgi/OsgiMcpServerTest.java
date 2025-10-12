@@ -29,6 +29,9 @@ class OsgiMcpServerTest {
     
     /**
      * Set up for each test - starts the MCP server process.
+     * 
+     * Note: The tests require the shaded JAR to be built. If running tests directly
+     * (e.g., 'mvn test'), you must first run 'mvn package' or use 'mvn verify'.
      */
     @BeforeEach
     void setUp() throws Exception {
@@ -38,7 +41,7 @@ class OsgiMcpServerTest {
         File jarFile = new File("target/mcp-osgi-server-1.0.0-SNAPSHOT.jar");
         if (!jarFile.exists()) {
             fail("JAR file not found at " + jarFile.getAbsolutePath() + 
-                 ". Please run 'mvn package' first.");
+                 ". Please run 'mvn package' first, or use 'mvn verify' to build and test.");
         }
         
         // Start the server process
@@ -59,7 +62,16 @@ class OsgiMcpServerTest {
         Thread.sleep(500);
         
         // Verify the process is running
-        assertTrue(serverProcess.isAlive(), "Server process should be running");
+        if (!serverProcess.isAlive()) {
+            // Try to capture error output
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(serverProcess.getErrorStream()));
+            StringBuilder errorOutput = new StringBuilder();
+            String line;
+            while ((line = errorReader.readLine()) != null) {
+                errorOutput.append(line).append("\n");
+            }
+            fail("Server process failed to start. Error output:\n" + errorOutput.toString());
+        }
     }
     
     /**
@@ -308,9 +320,16 @@ class OsgiMcpServerTest {
     /**
      * Test that the JAR file is created after build.
      * This verifies the Maven build process.
+     * 
+     * Note: This test does not require the server to be running, so we skip setUp.
      */
     @Test
-    void testJarFileExists() {
+    void testJarFileExists() throws Exception {
+        // Skip server startup for this test by cleaning up early
+        if (serverProcess != null && serverProcess.isAlive()) {
+            tearDown();
+        }
+        
         File jarFile = new File("target/mcp-osgi-server-1.0.0-SNAPSHOT.jar");
         // The JAR should exist after the build, but we'll make this test informative
         if (jarFile.exists()) {
