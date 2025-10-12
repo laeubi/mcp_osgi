@@ -25,7 +25,7 @@ public class OsgiMcpServer {
     private static final Logger logger = LoggerFactory.getLogger(OsgiMcpServer.class);
     
     /**
-     * Create the hello_osgi tool definition.
+     * Create the hello_osgi tool definition. test edit to check workflows
      */
     private static McpSchema.Tool createHelloOsgiTool() {
         // Define input schema for the tool
