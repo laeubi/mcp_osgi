@@ -1,263 +1,61 @@
 package io.github.laeubi.mcp.osgi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
+import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * MCP Server implementation for OSGi tools.
  * 
- * This server implements the Model Context Protocol (MCP) to expose OSGi-related
- * tools that can be used by AI agents like GitHub Copilot.
+ * This server implements the Model Context Protocol (MCP) using the official
+ * MCP Java SDK to expose OSGi-related tools that can be used by AI agents 
+ * like GitHub Copilot.
  * 
  * The server communicates via JSON-RPC 2.0 over stdio transport.
  */
 public class OsgiMcpServer {
     
     private static final Logger logger = LoggerFactory.getLogger(OsgiMcpServer.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
     
-    private final Map<String, ToolHandler> toolHandlers = new HashMap<>();
-    private final BufferedReader reader;
-    private final PrintWriter writer;
-    
-    public OsgiMcpServer() {
-        this.reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
-        this.writer = new PrintWriter(System.out, true, StandardCharsets.UTF_8);
-        registerTools();
+    /**
+     * Create the hello_osgi tool definition.
+     */
+    private static McpSchema.Tool createHelloOsgiTool() {
+        // Define input schema for the tool
+        Map<String, Object> nameProperty = Map.of(
+            "type", "string",
+            "description", "The name to greet"
+        );
+        
+        McpSchema.JsonSchema inputSchema = new McpSchema.JsonSchema(
+            "object",
+            Map.of("name", nameProperty),
+            List.of("name"),
+            null,
+            null,
+            null
+        );
+        
+        return McpSchema.Tool.builder()
+            .name("hello_osgi")
+            .description("A demonstration tool that returns a greeting with OSGi context information")
+            .inputSchema(inputSchema)
+            .build();
     }
     
     /**
-     * Register all available tools with their handlers.
+     * Handle the hello_osgi tool call.
      */
-    private void registerTools() {
-        // Register the hello_osgi tool
-        toolHandlers.put("hello_osgi", new HelloOsgiToolHandler());
-    }
-    
-    /**
-     * Start the MCP server and process requests.
-     */
-    public void start() {
-        logger.info("Starting MCP OSGi Server...");
-        
-        try {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.trim().isEmpty()) {
-                    continue;
-                }
-                
-                try {
-                    JsonNode request = objectMapper.readTree(line);
-                    JsonNode response = handleRequest(request);
-                    
-                    if (response != null) {
-                        writer.println(objectMapper.writeValueAsString(response));
-                        writer.flush();
-                    }
-                } catch (Exception e) {
-                    logger.error("Error processing request: {}", line, e);
-                    sendErrorResponse(null, -32603, "Internal error: " + e.getMessage());
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Error reading from stdin", e);
-        }
-        
-        logger.info("MCP OSGi Server stopped.");
-    }
-    
-    /**
-     * Handle a JSON-RPC request.
-     */
-    private JsonNode handleRequest(JsonNode request) {
-        String method = request.path("method").asText();
-        JsonNode params = request.path("params");
-        JsonNode id = request.path("id");
-        
-        logger.debug("Handling request - method: {}, id: {}", method, id);
-        
-        switch (method) {
-            case "initialize":
-                return handleInitialize(id, params);
-            case "tools/list":
-                return handleToolsList(id);
-            case "tools/call":
-                return handleToolCall(id, params);
-            case "ping":
-                return handlePing(id);
-            default:
-                return createErrorResponse(id, -32601, "Method not found: " + method);
-        }
-    }
-    
-    /**
-     * Handle the initialize request.
-     */
-    private JsonNode handleInitialize(JsonNode id, JsonNode params) {
-        logger.info("Received initialize request");
-        
-        ObjectNode result = objectMapper.createObjectNode();
-        result.put("protocolVersion", "2024-11-05");
-        result.put("serverName", "mcp-osgi-server");
-        result.put("serverVersion", "1.0.0");
-        
-        ObjectNode capabilities = objectMapper.createObjectNode();
-        ObjectNode toolsCapability = objectMapper.createObjectNode();
-        toolsCapability.put("listChanged", false);
-        capabilities.set("tools", toolsCapability);
-        result.set("capabilities", capabilities);
-        
-        return createSuccessResponse(id, result);
-    }
-    
-    /**
-     * Handle the tools/list request.
-     */
-    private JsonNode handleToolsList(JsonNode id) {
-        logger.info("Received tools/list request");
-        
-        ObjectNode result = objectMapper.createObjectNode();
-        ArrayNode tools = objectMapper.createArrayNode();
-        
-        // Add hello_osgi tool
-        ObjectNode helloTool = objectMapper.createObjectNode();
-        helloTool.put("name", "hello_osgi");
-        helloTool.put("description", "A demonstration tool that returns a greeting with OSGi context information");
-        
-        ObjectNode inputSchema = objectMapper.createObjectNode();
-        inputSchema.put("type", "object");
-        
-        ObjectNode properties = objectMapper.createObjectNode();
-        ObjectNode nameProperty = objectMapper.createObjectNode();
-        nameProperty.put("type", "string");
-        nameProperty.put("description", "The name to greet");
-        properties.set("name", nameProperty);
-        
-        inputSchema.set("properties", properties);
-        
-        ArrayNode required = objectMapper.createArrayNode();
-        required.add("name");
-        inputSchema.set("required", required);
-        
-        helloTool.set("inputSchema", inputSchema);
-        tools.add(helloTool);
-        
-        result.set("tools", tools);
-        return createSuccessResponse(id, result);
-    }
-    
-    /**
-     * Handle the tools/call request.
-     */
-    private JsonNode handleToolCall(JsonNode id, JsonNode params) {
-        String toolName = params.path("name").asText();
-        JsonNode arguments = params.path("arguments");
-        
-        logger.info("Received tools/call request for tool: {}", toolName);
-        
-        ToolHandler handler = toolHandlers.get(toolName);
-        if (handler == null) {
-            return createErrorResponse(id, -32602, "Unknown tool: " + toolName);
-        }
-        
-        try {
-            String result = handler.handle(arguments);
-            
-            ObjectNode resultNode = objectMapper.createObjectNode();
-            ArrayNode content = objectMapper.createArrayNode();
-            
-            ObjectNode textContent = objectMapper.createObjectNode();
-            textContent.put("type", "text");
-            textContent.put("text", result);
-            content.add(textContent);
-            
-            resultNode.set("content", content);
-            
-            return createSuccessResponse(id, resultNode);
-        } catch (Exception e) {
-            logger.error("Error executing tool: {}", toolName, e);
-            return createErrorResponse(id, -32603, "Tool execution error: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Handle the ping request.
-     */
-    private JsonNode handlePing(JsonNode id) {
-        logger.debug("Received ping request");
-        ObjectNode result = objectMapper.createObjectNode();
-        return createSuccessResponse(id, result);
-    }
-    
-    /**
-     * Create a success response.
-     */
-    private JsonNode createSuccessResponse(JsonNode id, JsonNode result) {
-        ObjectNode response = objectMapper.createObjectNode();
-        response.put("jsonrpc", "2.0");
-        response.set("id", id);
-        response.set("result", result);
-        return response;
-    }
-    
-    /**
-     * Create an error response.
-     */
-    private JsonNode createErrorResponse(JsonNode id, int code, String message) {
-        ObjectNode response = objectMapper.createObjectNode();
-        response.put("jsonrpc", "2.0");
-        if (id != null) {
-            response.set("id", id);
-        }
-        
-        ObjectNode error = objectMapper.createObjectNode();
-        error.put("code", code);
-        error.put("message", message);
-        response.set("error", error);
-        
-        return response;
-    }
-    
-    /**
-     * Send an error response to the client.
-     */
-    private void sendErrorResponse(JsonNode id, int code, String message) {
-        try {
-            JsonNode response = createErrorResponse(id, code, message);
-            writer.println(objectMapper.writeValueAsString(response));
-            writer.flush();
-        } catch (Exception e) {
-            logger.error("Error sending error response", e);
-        }
-    }
-    
-    /**
-     * Interface for tool handlers.
-     */
-    interface ToolHandler {
-        String handle(JsonNode arguments) throws Exception;
-    }
-    
-    /**
-     * Handler for the hello_osgi tool.
-     */
-    static class HelloOsgiToolHandler implements ToolHandler {
-        @Override
-        public String handle(JsonNode arguments) {
-            String name = arguments.path("name").asText("World");
+    private static Mono<McpSchema.CallToolResult> handleHelloOsgi(Map<String, Object> arguments) {
+        return Mono.fromSupplier(() -> {
+            String name = arguments.getOrDefault("name", "World").toString();
             
             // Gather OSGi-like context information
             StringBuilder response = new StringBuilder();
@@ -275,15 +73,44 @@ public class OsgiMcpServer {
             response.append("- Package wiring and dependencies\n");
             response.append("- Framework diagnostics and configuration\n");
             
-            return response.toString();
-        }
+            // Create text content
+            McpSchema.TextContent textContent = new McpSchema.TextContent(response.toString());
+            
+            // Return the result with content
+            return new McpSchema.CallToolResult(List.of(textContent), false);
+        });
     }
     
     /**
      * Main entry point.
      */
     public static void main(String[] args) {
-        OsgiMcpServer server = new OsgiMcpServer();
-        server.start();
+        logger.info("Starting MCP OSGi Server using official MCP Java SDK...");
+        
+        // Create JSON mapper
+        McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
+        
+        // Create stdio transport provider
+        StdioServerTransportProvider transportProvider = new StdioServerTransportProvider(jsonMapper);
+        
+        // Build and configure the MCP server
+        var server = McpServer.async(transportProvider)
+            .serverInfo("mcp-osgi-server", "1.0.0")
+            .capabilities(McpSchema.ServerCapabilities.builder()
+                .tools(true)
+                .build())
+            .toolCall(createHelloOsgiTool(), (exchange, request) -> 
+                handleHelloOsgi(request.arguments()))
+            .build();
+        
+        logger.info("MCP OSGi Server started successfully");
+        
+        // Keep the server running
+        try {
+            Thread.currentThread().join();
+        } catch (InterruptedException e) {
+            logger.info("Server interrupted, shutting down...");
+            server.closeGracefully().block();
+        }
     }
 }
