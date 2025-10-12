@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "osgi": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
+      ],
+      "description": "MCP server providing OSGi tools for AI agents"
+    }
+  }
+}

@@ -102,25 +102,50 @@ This repository includes a Maven-based example MCP server that demonstrates how 
 # Build the project
 mvn clean package
 
-# Run the MCP server
-java -jar target/mcp-osgi-server.jar
+# Run the MCP server (communicates via stdio)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
+```
+
+### Testing the Server
+
+A test script is provided to demonstrate basic interaction with the MCP server:
+
+```bash
+# Make the script executable (if not already)
+chmod +x test-mcp-server.sh
+
+# Run the test
+./test-mcp-server.sh
+```
+
+To manually test the server, you can pipe JSON-RPC requests to it:
+
+```bash
+# Start the server
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
+
+# In another terminal, send a request (example):
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}' | java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 ```
 
 ### Using with GitHub Copilot
 
 To use this MCP server with GitHub Copilot or other MCP clients, configure the client to connect to the server via stdio transport.
 
-Example MCP client configuration:
+Example MCP client configuration (see `mcp-client-config-example.json`):
 ```json
 {
   "mcpServers": {
     "osgi": {
       "command": "java",
-      "args": ["-jar", "/path/to/mcp-osgi-server.jar"]
+      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "description": "MCP server providing OSGi tools for AI agents"
     }
   }
 }
 ```
+
+For GitHub Copilot, place this configuration in your MCP settings file (typically `~/.mcp/settings.json` or as configured in your IDE).
 
 ## Project Structure
 
@@ -134,11 +159,21 @@ mcp_osgi/
 │                   └── laeubi/
 │                       └── mcp/
 │                           └── osgi/
-│                               └── OsgiMcpServer.java
-├── pom.xml
-├── README.md
-└── LICENSE
+│                               └── OsgiMcpServer.java    # Main MCP server implementation
+├── pom.xml                                                # Maven build configuration
+├── test-mcp-server.sh                                     # Test script for the server
+├── mcp-client-config-example.json                         # Example MCP client configuration
+├── .gitignore                                             # Git ignore patterns
+├── README.md                                              # This file
+└── LICENSE                                                # Eclipse Public License 2.0
 ```
+
+### Key Files
+
+- **OsgiMcpServer.java**: The main MCP server implementation that handles JSON-RPC requests and exposes the `hello_osgi` tool
+- **pom.xml**: Maven configuration with dependencies for Jackson (JSON processing) and SLF4J (logging)
+- **test-mcp-server.sh**: Shell script to demonstrate server interaction
+- **mcp-client-config-example.json**: Example configuration for MCP clients like GitHub Copilot
 
 ## Contributing
 
