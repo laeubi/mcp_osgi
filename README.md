@@ -1,6 +1,8 @@
 # mcp_osgi
 A MCP server dedicated to bring tools useful in OSGi context
 
+> **Note**: This project now uses the [official MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk) (v0.14.1) instead of a homebrew implementation. This provides a standardized, production-ready implementation of the Model Context Protocol with better maintainability and feature support.
+
 ## Introduction
 
 ### What is MCP?
@@ -91,10 +93,16 @@ By exposing OSGi tools through MCP, AI coding agents can:
 
 This repository includes a Maven-based example MCP server that demonstrates how to:
 
-1. Set up a Java MCP server using the MCP Java SDK
+1. Set up a Java MCP server using the [official MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk)
 2. Define and expose tools through the MCP protocol
 3. Implement tool handlers with OSGi context
-4. Handle JSON-RPC communication with MCP clients
+4. Handle JSON-RPC communication with MCP clients using the SDK's stdio transport
+
+The server uses the official **MCP Java SDK v0.14.1** which provides:
+- Standardized implementation of the Model Context Protocol
+- Built-in stdio transport for inter-process communication
+- Asynchronous server capabilities with Project Reactor
+- JSON schema validation and tool registration APIs
 
 ### Building and Running
 
@@ -170,10 +178,20 @@ mcp_osgi/
 
 ### Key Files
 
-- **OsgiMcpServer.java**: The main MCP server implementation that handles JSON-RPC requests and exposes the `hello_osgi` tool
-- **pom.xml**: Maven configuration with dependencies for Jackson (JSON processing) and SLF4J (logging)
+- **OsgiMcpServer.java**: The main MCP server implementation using the official MCP Java SDK that exposes the `hello_osgi` tool
+- **pom.xml**: Maven configuration with dependencies for the MCP Java SDK (v0.14.1) and SLF4J (logging)
 - **test-mcp-server.sh**: Shell script to demonstrate server interaction
 - **mcp-client-config-example.json**: Example configuration for MCP clients like GitHub Copilot
+
+### Implementation Details
+
+The server implementation leverages the official MCP Java SDK:
+
+1. **Transport Layer**: Uses `StdioServerTransportProvider` for stdio-based communication
+2. **Server Type**: Built with `McpServer.async()` for non-blocking asynchronous operations
+3. **Tool Registration**: Tools are registered using the SDK's `toolCall()` method with proper schema definitions
+4. **JSON Handling**: Uses the SDK's built-in Jackson integration for JSON serialization
+5. **Reactive Streams**: Tool handlers return `Mono<CallToolResult>` for reactive processing
 
 ## Contributing
 
