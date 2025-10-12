@@ -34,14 +34,71 @@ mvn test
 ### Test Structure
 - Tests are located in `src/test/java/io/github/laeubi/mcp/osgi/`
 - The main test class is `OsgiMcpServerTest.java`
-- Tests verify tool creation, tool handlers, and server configuration
+- Tests use ProcessBuilder to fork a new JVM running the actual MCP server JAR
+- Tests communicate with the server via stdin/stdout using JSON-RPC protocol
+
+### Testing Strategy
+The tests use a **ProcessBuilder-based approach** rather than reflection:
+
+1. **Process Management**: Each test starts a new JVM process running the server JAR
+2. **Communication**: Tests send JSON-RPC requests via stdin and read responses from stdout
+3. **Protocol Compliance**: Tests follow the MCP protocol (initialize, notifications/initialized, then other requests)
+4. **Cleanup**: Processes are properly terminated after each test in the `@AfterEach` method
+
+This approach provides several benefits:
+- Tests the server in a realistic environment (actual process, not mocked)
+- Not dependent on internal implementation details (no reflection needed)
+- Tests actual JSON-RPC communication and protocol compliance
+- Changes to private methods don't break tests
 
 ### Writing New Tests
 When adding new tools or functionality:
-1. Create tests in the same package as the code being tested
-2. Follow JUnit 5 conventions
-3. Use descriptive test method names that explain what is being tested
-4. Test both success and failure scenarios
+
+1. **Create tests in the same package** as the code being tested
+2. **Follow JUnit 5 conventions** with `@Test`, `@BeforeEach`, `@AfterEach`
+3. **Use descriptive test method names** that explain what is being tested
+4. **Test both success and failure scenarios**
+
+#### Example Test Pattern
+```java
+@Test
+void testNewTool() throws Exception {
+    // Initialize the server
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode initParams = mapper.createObjectNode()
+        .put("protocolVersion", "2024-11-05")
+        .set("clientInfo", mapper.createObjectNode()
+            .put("name", "test-client")
+            .put("version", "1.0.0"));
+    sendRequest("initialize", initParams);
+    
+    // Send initialized notification (required by MCP protocol)
+    sendNotification("notifications/initialized");
+    
+    // Build and send your test request
+    JsonNode params = mapper.createObjectNode()
+        .put("name", "tool_name")
+        .set("arguments", mapper.createObjectNode()
+            .put("arg1", "value1"));
+    
+    JsonNode response = sendRequest("tools/call", params);
+    
+    // Verify the response
+    assertNotNull(response);
+    assertTrue(response.has("result"));
+    // Add more assertions...
+}
+```
+
+#### Helper Methods Available
+- `sendRequest(String method, JsonNode params)`: Send a JSON-RPC request and get the response
+- `sendNotification(String method)`: Send a JSON-RPC notification (no response expected)
+
+#### Important Notes
+- The server JAR must be built before running tests: `mvn package`
+- Tests automatically start and stop the server process
+- The MCP protocol requires sending `notifications/initialized` after the `initialize` request
+- Responses may take time to arrive; the helper methods have built-in timeouts
 
 ## Running the Server
 
