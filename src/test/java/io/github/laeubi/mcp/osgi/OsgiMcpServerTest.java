@@ -227,10 +227,10 @@ class OsgiMcpServerTest {
         assertTrue(result.has("tools"), "Result should have tools array");
         JsonNode tools = result.get("tools");
         assertTrue(tools.isArray(), "Tools should be an array");
-        assertEquals(1, tools.size(), "Should have 1 tool");
+        assertTrue(tools.size() >= 1, "Should have at least 1 tool");
         
         JsonNode tool = tools.get(0);
-        assertEquals("hello_osgi", tool.get("name").asText(), "Tool name should be hello_osgi");
+        assertEquals("hello_osgi", tool.get("name").asText(), "First tool name should be hello_osgi");
         assertTrue(tool.has("description"), "Tool should have description");
         assertTrue(tool.has("inputSchema"), "Tool should have inputSchema");
     }
@@ -337,5 +337,321 @@ class OsgiMcpServerTest {
         }
         // If JAR doesn't exist, that's okay - it might not have been built yet
         // The main validation is that the code compiles
+    }
+    
+    /**
+     * Test that the server lists all available tools including the new ones.
+     */
+    @Test
+    void testListAllTools() throws Exception {
+        // Initialize first
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode initParams = mapper.createObjectNode()
+            .put("protocolVersion", "2024-11-05")
+            .set("clientInfo", mapper.createObjectNode()
+                .put("name", "test-client")
+                .put("version", "1.0.0"));
+        sendRequest("initialize", initParams);
+        
+        // Send initialized notification (required by MCP protocol)
+        sendNotification("notifications/initialized");
+        
+        // Send tools/list request
+        JsonNode response = sendRequest("tools/list", null);
+        
+        // Verify response
+        assertNotNull(response, "Response should not be null");
+        assertTrue(response.has("result"), "Response should have result");
+        
+        JsonNode result = response.get("result");
+        assertTrue(result.has("tools"), "Result should have tools array");
+        JsonNode tools = result.get("tools");
+        assertTrue(tools.isArray(), "Tools should be an array");
+        assertEquals(3, tools.size(), "Should have 3 tools");
+        
+        // Verify the tools are present
+        boolean hasHelloOsgi = false;
+        boolean hasBundleInfo = false;
+        boolean hasFind = false;
+        
+        for (JsonNode tool : tools) {
+            String toolName = tool.get("name").asText();
+            if ("hello_osgi".equals(toolName)) {
+                hasHelloOsgi = true;
+            } else if ("bundle_info".equals(toolName)) {
+                hasBundleInfo = true;
+                assertTrue(tool.has("description"), "bundle_info should have description");
+                assertTrue(tool.get("description").asText().contains("JAR or MANIFEST.MF"), 
+                    "bundle_info description should mention JAR or MANIFEST.MF");
+            } else if ("find".equals(toolName)) {
+                hasFind = true;
+                assertTrue(tool.has("description"), "find should have description");
+                assertTrue(tool.get("description").asText().contains("package") || 
+                          tool.get("description").asText().contains("bundle") ||
+                          tool.get("description").asText().contains("capability"), 
+                    "find description should mention package, bundle, or capability");
+            }
+        }
+        
+        assertTrue(hasHelloOsgi, "Should have hello_osgi tool");
+        assertTrue(hasBundleInfo, "Should have bundle_info tool");
+        assertTrue(hasFind, "Should have find tool");
+    }
+    
+    /**
+     * Test calling the bundle_info tool with a JAR file.
+     */
+    @Test
+    void testCallBundleInfoWithJar() throws Exception {
+        // Initialize first
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode initParams = mapper.createObjectNode()
+            .put("protocolVersion", "2024-11-05")
+            .set("clientInfo", mapper.createObjectNode()
+                .put("name", "test-client")
+                .put("version", "1.0.0"));
+        sendRequest("initialize", initParams);
+        
+        // Send initialized notification (required by MCP protocol)
+        sendNotification("notifications/initialized");
+        
+        // Build tools/call params
+        JsonNode callParams = mapper.createObjectNode()
+            .put("name", "bundle_info")
+            .set("arguments", mapper.createObjectNode()
+                .put("file", "/path/to/mybundle.jar"));
+        
+        // Send tools/call request
+        JsonNode response = sendRequest("tools/call", callParams);
+        
+        // Verify response
+        assertNotNull(response, "Response should not be null");
+        assertTrue(response.has("result"), "Response should have result");
+        
+        JsonNode result = response.get("result");
+        assertFalse(result.get("isError").asBoolean(), "Result should not be an error");
+        assertTrue(result.has("content"), "Result should have content");
+        JsonNode content = result.get("content");
+        assertTrue(content.isArray(), "Content should be an array");
+        assertTrue(content.size() > 0, "Content should not be empty");
+        
+        JsonNode textContent = content.get(0);
+        assertEquals("text", textContent.get("type").asText(), "Content type should be text");
+        String text = textContent.get("text").asText();
+        assertTrue(text.contains("Bundle Information Analysis"), "Response should contain bundle analysis title");
+        assertTrue(text.contains("Bundle-SymbolicName"), "Response should contain Bundle-SymbolicName");
+        assertTrue(text.contains("Bundle-Version"), "Response should contain Bundle-Version");
+        assertTrue(text.contains("Required Bundles"), "Response should contain Required Bundles");
+        assertTrue(text.contains("Required Packages"), "Response should contain Required Packages");
+        assertTrue(text.contains("Required Capabilities"), "Response should contain Required Capabilities");
+    }
+    
+    /**
+     * Test calling the bundle_info tool with a MANIFEST.MF file.
+     */
+    @Test
+    void testCallBundleInfoWithManifest() throws Exception {
+        // Initialize first
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode initParams = mapper.createObjectNode()
+            .put("protocolVersion", "2024-11-05")
+            .set("clientInfo", mapper.createObjectNode()
+                .put("name", "test-client")
+                .put("version", "1.0.0"));
+        sendRequest("initialize", initParams);
+        
+        // Send initialized notification (required by MCP protocol)
+        sendNotification("notifications/initialized");
+        
+        // Build tools/call params
+        JsonNode callParams = mapper.createObjectNode()
+            .put("name", "bundle_info")
+            .set("arguments", mapper.createObjectNode()
+                .put("file", "/path/to/META-INF/MANIFEST.MF"));
+        
+        // Send tools/call request
+        JsonNode response = sendRequest("tools/call", callParams);
+        
+        // Verify response
+        assertNotNull(response, "Response should not be null");
+        assertTrue(response.has("result"), "Response should have result");
+        
+        JsonNode result = response.get("result");
+        assertFalse(result.get("isError").asBoolean(), "Result should not be an error");
+        
+        JsonNode content = result.get("content");
+        JsonNode textContent = content.get(0);
+        String text = textContent.get("text").asText();
+        assertTrue(text.contains("Valid OSGi Bundle"), "Response should indicate valid OSGi bundle");
+    }
+    
+    /**
+     * Test calling the bundle_info tool with a non-bundle file.
+     */
+    @Test
+    void testCallBundleInfoWithNonBundle() throws Exception {
+        // Initialize first
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode initParams = mapper.createObjectNode()
+            .put("protocolVersion", "2024-11-05")
+            .set("clientInfo", mapper.createObjectNode()
+                .put("name", "test-client")
+                .put("version", "1.0.0"));
+        sendRequest("initialize", initParams);
+        
+        // Send initialized notification (required by MCP protocol)
+        sendNotification("notifications/initialized");
+        
+        // Build tools/call params
+        JsonNode callParams = mapper.createObjectNode()
+            .put("name", "bundle_info")
+            .set("arguments", mapper.createObjectNode()
+                .put("file", "/path/to/some-file.txt"));
+        
+        // Send tools/call request
+        JsonNode response = sendRequest("tools/call", callParams);
+        
+        // Verify response
+        assertNotNull(response, "Response should not be null");
+        assertTrue(response.has("result"), "Response should have result");
+        
+        JsonNode result = response.get("result");
+        assertFalse(result.get("isError").asBoolean(), "Result should not be an error");
+        
+        JsonNode content = result.get("content");
+        JsonNode textContent = content.get(0);
+        String text = textContent.get("text").asText();
+        assertTrue(text.contains("Not a bundle"), "Response should indicate not a bundle");
+    }
+    
+    /**
+     * Test calling the find tool to search for a package.
+     */
+    @Test
+    void testCallFindPackage() throws Exception {
+        // Initialize first
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode initParams = mapper.createObjectNode()
+            .put("protocolVersion", "2024-11-05")
+            .set("clientInfo", mapper.createObjectNode()
+                .put("name", "test-client")
+                .put("version", "1.0.0"));
+        sendRequest("initialize", initParams);
+        
+        // Send initialized notification (required by MCP protocol)
+        sendNotification("notifications/initialized");
+        
+        // Build tools/call params
+        JsonNode callParams = mapper.createObjectNode()
+            .put("name", "find")
+            .set("arguments", mapper.createObjectNode()
+                .put("type", "package")
+                .put("name", "org.apache.commons.logging"));
+        
+        // Send tools/call request
+        JsonNode response = sendRequest("tools/call", callParams);
+        
+        // Verify response
+        assertNotNull(response, "Response should not be null");
+        assertTrue(response.has("result"), "Response should have result");
+        
+        JsonNode result = response.get("result");
+        assertFalse(result.get("isError").asBoolean(), "Result should not be an error");
+        assertTrue(result.has("content"), "Result should have content");
+        JsonNode content = result.get("content");
+        assertTrue(content.isArray(), "Content should be an array");
+        assertTrue(content.size() > 0, "Content should not be empty");
+        
+        JsonNode textContent = content.get(0);
+        assertEquals("text", textContent.get("type").asText(), "Content type should be text");
+        String text = textContent.get("text").asText();
+        assertTrue(text.contains("OSGi Repository Search"), "Response should contain search title");
+        assertTrue(text.contains("Search Type: package"), "Response should contain search type");
+        assertTrue(text.contains("Bundle:"), "Response should contain Bundle results");
+        assertTrue(text.contains("Version:"), "Response should contain Version information");
+        assertTrue(text.contains("Download URL:"), "Response should contain Download URL");
+    }
+    
+    /**
+     * Test calling the find tool to search for a bundle.
+     */
+    @Test
+    void testCallFindBundle() throws Exception {
+        // Initialize first
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode initParams = mapper.createObjectNode()
+            .put("protocolVersion", "2024-11-05")
+            .set("clientInfo", mapper.createObjectNode()
+                .put("name", "test-client")
+                .put("version", "1.0.0"));
+        sendRequest("initialize", initParams);
+        
+        // Send initialized notification (required by MCP protocol)
+        sendNotification("notifications/initialized");
+        
+        // Build tools/call params
+        JsonNode callParams = mapper.createObjectNode()
+            .put("name", "find")
+            .set("arguments", mapper.createObjectNode()
+                .put("type", "bundle")
+                .put("name", "org.eclipse.osgi"));
+        
+        // Send tools/call request
+        JsonNode response = sendRequest("tools/call", callParams);
+        
+        // Verify response
+        assertNotNull(response, "Response should not be null");
+        assertTrue(response.has("result"), "Response should have result");
+        
+        JsonNode result = response.get("result");
+        assertFalse(result.get("isError").asBoolean(), "Result should not be an error");
+        
+        JsonNode content = result.get("content");
+        JsonNode textContent = content.get(0);
+        String text = textContent.get("text").asText();
+        assertTrue(text.contains("Search Type: bundle"), "Response should contain search type");
+        assertTrue(text.contains("Download URL:"), "Response should contain Download URL");
+    }
+    
+    /**
+     * Test calling the find tool to search for a capability.
+     */
+    @Test
+    void testCallFindCapability() throws Exception {
+        // Initialize first
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode initParams = mapper.createObjectNode()
+            .put("protocolVersion", "2024-11-05")
+            .set("clientInfo", mapper.createObjectNode()
+                .put("name", "test-client")
+                .put("version", "1.0.0"));
+        sendRequest("initialize", initParams);
+        
+        // Send initialized notification (required by MCP protocol)
+        sendNotification("notifications/initialized");
+        
+        // Build tools/call params
+        JsonNode callParams = mapper.createObjectNode()
+            .put("name", "find")
+            .set("arguments", mapper.createObjectNode()
+                .put("type", "capability")
+                .put("name", "osgi.service.component"));
+        
+        // Send tools/call request
+        JsonNode response = sendRequest("tools/call", callParams);
+        
+        // Verify response
+        assertNotNull(response, "Response should not be null");
+        assertTrue(response.has("result"), "Response should have result");
+        
+        JsonNode result = response.get("result");
+        assertFalse(result.get("isError").asBoolean(), "Result should not be an error");
+        
+        JsonNode content = result.get("content");
+        JsonNode textContent = content.get(0);
+        String text = textContent.get("text").asText();
+        assertTrue(text.contains("Search Type: capability"), "Response should contain search type");
+        assertTrue(text.contains("Provides Capability:"), "Response should contain capability information");
+        assertTrue(text.contains("Download URL:"), "Response should contain Download URL");
     }
 }
