@@ -249,38 +249,88 @@ public class OsgiMcpServer {
     
     /**
      * Main entry point.
+     * 
+     * @param args Command line arguments. Accepts:
+     *             - "jdkserver" to start HTTP server using jdk.httpserver (default port 8080)
+     *             - "jdkserver PORT" to start HTTP server on specified port
+     *             - No args or any other value starts stdio transport (default)
      */
     public static void main(String[] args) {
         logger.info("Starting MCP OSGi Server using official MCP Java SDK...");
         
-        // Create JSON mapper
-        McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
+        // Determine transport mode from command line arguments
+        boolean useHttpTransport = args.length > 0 && "jdkserver".equalsIgnoreCase(args[0]);
+        int httpPort = 8080; // Default port
         
-        // Create stdio transport provider
-        StdioServerTransportProvider transportProvider = new StdioServerTransportProvider(jsonMapper);
+        if (useHttpTransport && args.length > 1) {
+            try {
+                httpPort = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                logger.warn("Invalid port number '{}', using default port {}", args[1], httpPort);
+            }
+        }
         
-        // Build and configure the MCP server
-        var server = McpServer.async(transportProvider)
-            .serverInfo("mcp-osgi-server", "1.0.0")
-            .capabilities(McpSchema.ServerCapabilities.builder()
-                .tools(true)
-                .build())
-            .toolCall(createHelloOsgiTool(), (exchange, request) -> 
-                handleHelloOsgi(request.arguments()))
-            .toolCall(createBundleInfoTool(), (exchange, request) -> 
-                handleBundleInfo(request.arguments()))
-            .toolCall(createFindTool(), (exchange, request) -> 
-                handleFind(request.arguments()))
-            .build();
-        
-        logger.info("MCP OSGi Server started successfully");
-        
-        // Keep the server running
-        try {
-            Thread.currentThread().join();
-        } catch (InterruptedException e) {
-            logger.info("Server interrupted, shutting down...");
-            server.closeGracefully().block();
+        // Create appropriate transport
+        if (useHttpTransport) {
+            logger.info("Using JDK HTTP Server transport on port {}", httpPort);
+            
+            // Create HTTP server wrapper
+            JdkHttpServerWrapper httpServer = new JdkHttpServerWrapper(httpPort, "/mcp");
+            
+            // Register tools with schemas
+            httpServer.registerTool(createHelloOsgiTool(), args1 -> handleHelloOsgi(args1));
+            httpServer.registerTool(createBundleInfoTool(), args1 -> handleBundleInfo(args1));
+            httpServer.registerTool(createFindTool(), args1 -> handleFind(args1));
+            
+            // Start HTTP server
+            try {
+                httpServer.start();
+                logger.info("MCP OSGi Server started successfully via HTTP on port {}", httpPort);
+                logger.info("Access the server at http://localhost:{}/mcp", httpPort);
+            } catch (Exception e) {
+                logger.error("Failed to start HTTP server", e);
+                System.exit(1);
+            }
+            
+            // Keep the server running
+            try {
+                Thread.currentThread().join();
+            } catch (InterruptedException e) {
+                logger.info("Server interrupted, shutting down...");
+                httpServer.stop();
+            }
+        } else {
+            logger.info("Using stdio transport");
+            
+            // Create JSON mapper
+            McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
+            
+            // Create stdio transport provider
+            StdioServerTransportProvider transportProvider = new StdioServerTransportProvider(jsonMapper);
+            
+            // Build and configure the MCP server
+            var server = McpServer.async(transportProvider)
+                .serverInfo("mcp-osgi-server", "1.0.0")
+                .capabilities(McpSchema.ServerCapabilities.builder()
+                    .tools(true)
+                    .build())
+                .toolCall(createHelloOsgiTool(), (exchange, request) -> 
+                    handleHelloOsgi(request.arguments()))
+                .toolCall(createBundleInfoTool(), (exchange, request) -> 
+                    handleBundleInfo(request.arguments()))
+                .toolCall(createFindTool(), (exchange, request) -> 
+                    handleFind(request.arguments()))
+                .build();
+            
+            logger.info("MCP OSGi Server started successfully via stdio");
+            
+            // Keep the server running
+            try {
+                Thread.currentThread().join();
+            } catch (InterruptedException e) {
+                logger.info("Server interrupted, shutting down...");
+                server.closeGracefully().block();
+            }
         }
     }
 }
