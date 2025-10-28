@@ -49,9 +49,9 @@ COPILOT_AGENT_MCP_SERVER_TEMP=/home/runner/work/_temp/mcp-server
 ```
 
 **Interpretation:**
-- MCP is enabled in the environment
-- A temp directory for MCP servers is configured
-- However, the OSGi MCP server tools are not currently accessible
+- `COPILOT_MCP_ENABLED=true` - Indicates that MCP (Model Context Protocol) support is enabled in the GitHub Copilot Coding Agent environment. This allows the agent to discover and use MCP servers that expose tools.
+- `COPILOT_AGENT_MCP_SERVER_TEMP=/home/runner/work/_temp/mcp-server` - Specifies a temporary directory where MCP server artifacts or configurations may be stored. This is used by the agent to manage MCP server instances.
+- However, despite MCP being enabled, the OSGi MCP server tools are not currently accessible, suggesting the server process is not running or not configured in the agent's MCP settings.
 
 ## Possible Reasons
 
@@ -132,12 +132,15 @@ env | grep -i mcp
 # Examine available tools (manual inspection)
 # - Looked through tool names in available functions
 # - Searched for "osgi", "hello", "bundle", "find"
+# - Result: No OSGi-specific tools found in available tool list
 
-# Verified MCP server code exists
-cat src/main/java/io/github/laeubi/mcp/osgi/OsgiMcpServer.java
+# Verified MCP server code exists in repository
+ls -la /home/runner/work/mcp_osgi/mcp_osgi/src/main/java/io/github/laeubi/mcp/osgi/
+# Result: OsgiMcpServer.java exists
 
-# Confirmed tools are defined in code
-grep -A 5 "createHelloOsgiTool\|createBundleInfoTool\|createFindTool" src/main/java/io/github/laeubi/mcp/osgi/OsgiMcpServer.java
+# Confirmed tools are defined in the server code
+view /home/runner/work/mcp_osgi/mcp_osgi/src/main/java/io/github/laeubi/mcp/osgi/OsgiMcpServer.java
+# Result: hello_osgi, bundle_info, and find tools are properly defined
 ```
 
 ## Conclusion
