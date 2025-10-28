@@ -21,12 +21,6 @@ steps:
 
   - name: Copy JAR to standard location
     run: |
-      if [ -f target/mcp-osgi-server-1.0.0-SNAPSHOT.jar ]; then
-        mkdir -p /home/runner/target
-        cp target/mcp-osgi-server-1.0.0-SNAPSHOT.jar /home/runner/target/
-        echo "MCP server JAR copied to /home/runner/target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
-      else
-        echo "Error: JAR file not found at target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
-        echo "Maven build may have failed or the JAR name has changed"
-        exit 1
-      fi
+      mkdir -p /home/runner/tools/osgi_mcp
+      cp target/mcp-osgi-server-1.0.0-SNAPSHOT.jar /home/runner/tools/osgi_mcp/server.jar
+      echo "MCP server JAR copied to /home/runner/target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
