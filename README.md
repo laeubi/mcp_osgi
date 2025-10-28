@@ -3,6 +3,26 @@ A MCP server dedicated to bring tools useful in OSGi context
 
 > **Note**: This project now uses the [official MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk) (v0.14.1) instead of a homebrew implementation. This provides a standardized, production-ready implementation of the Model Context Protocol with better maintainability and feature support.
 
+## Quick Start
+
+### Verify Server Access
+
+To verify that the OSGi MCP server is accessible in your session:
+
+```bash
+./verify-server-access.sh
+```
+
+This script checks:
+- ✅ Server JAR availability at `/home/runner/tools/osgi_mcp/server.jar`
+- ✅ Server running status on port 3000
+- ✅ SSE endpoint accessibility
+- ✅ Configuration format
+
+For detailed verification results, see:
+- **[VERIFICATION_ANSWER.md](VERIFICATION_ANSWER.md)** - Quick answer and test results
+- **[SERVER_ACCESS_VERIFICATION.md](SERVER_ACCESS_VERIFICATION.md)** - Comprehensive documentation
+
 ## Introduction
 
 ### What is MCP?
@@ -173,11 +193,13 @@ This repository is configured to work directly with the GitHub Copilot Coding Ag
 
 **Setup Steps:**
 
-The repository includes a `.github/copilot-setup-steps.yml` file that configures the build environment for the Copilot Coding Agent. This workflow:
+The repository includes composite action files (`.github/copilot-setup-steps.yml` and `.github/action.yml`) that configure the build environment for the Copilot Coding Agent. This composite action:
 1. Checks out the repository code
 2. Sets up Java 21 with Maven
-3. Builds the MCP server JAR
+3. Builds the MCP server JAR with `mvn clean package -DskipTests`
 4. Copies it to `/home/runner/tools/osgi_mcp/server.jar`
+
+The Copilot Coding Agent automatically runs this composite action before starting the MCP server, ensuring the JAR file is available.
 
 **Configure MCP Server in Repository:**
 
