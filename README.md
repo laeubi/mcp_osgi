@@ -96,11 +96,12 @@ This repository includes a Maven-based example MCP server that demonstrates how 
 1. Set up a Java MCP server using the [official MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk)
 2. Define and expose tools through the MCP protocol
 3. Implement tool handlers with OSGi context
-4. Handle JSON-RPC communication with MCP clients using the SDK's stdio transport
+4. Support multiple transport modes: stdio and HTTP with SSE (Server-Sent Events)
 
 The server uses the official **MCP Java SDK v0.14.1** which provides:
 - Standardized implementation of the Model Context Protocol
 - Built-in stdio transport for inter-process communication
+- HTTP/SSE transport for server-based deployments
 - Asynchronous server capabilities with Project Reactor
 - JSON schema validation and tool registration APIs
 
@@ -110,13 +111,23 @@ The server uses the official **MCP Java SDK v0.14.1** which provides:
 # Build the project
 mvn clean package
 
-# Run the MCP server (communicates via stdio)
+# Run the MCP server in stdio mode (default - communicates via stdin/stdout)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
+
+# Run the MCP server in server mode (HTTP server with SSE transport)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server
+
+# Run the MCP server in server mode on a specific port
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 8080
 ```
+
+The server supports two modes:
+- **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout. This is suitable for process-based MCP clients.
+- **server mode**: Runs an embedded HTTP server with SSE (Server-Sent Events) transport. This is suitable for repository-based MCP configurations (like GitHub Copilot) that don't support stdio.
 
 ### Testing the Server
 
-A test script is provided to demonstrate basic interaction with the MCP server:
+A test script is provided to demonstrate basic interaction with the MCP server in stdio mode:
 
 ```bash
 # Make the script executable (if not already)
@@ -126,7 +137,7 @@ chmod +x test-mcp-server.sh
 ./test-mcp-server.sh
 ```
 
-To manually test the server, you can pipe JSON-RPC requests to it:
+To manually test the server in stdio mode, you can pipe JSON-RPC requests to it:
 
 ```bash
 # Start the server
@@ -136,9 +147,23 @@ java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}' | java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 ```
 
+To test the server in server mode, start it with the `server` parameter and access it via HTTP:
+
+```bash
+# Start the server in server mode on port 3000
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
+
+# In another terminal, access the SSE endpoint:
+curl http://localhost:3000/mcp/sse
+```
+
 ### Using with GitHub Copilot
 
-To use this MCP server with GitHub Copilot or other MCP clients, configure the client to connect to the server via stdio transport.
+To use this MCP server with GitHub Copilot or other MCP clients, you can configure the client to connect using either stdio or HTTP transport.
+
+#### Stdio Mode (Traditional)
+
+For traditional MCP clients that support stdio transport:
 
 #### Option 1: Using the Shared GitHub Actions Workflow (Recommended for GitHub Copilot Coding Agent)
 
@@ -184,6 +209,10 @@ After the workflow runs, the built JAR will be available as a workflow artifact.
 
 **Step 3: Configure for GitHub Copilot Coding Agent**
 
+Once you have the JAR file, configure your GitHub Copilot to use it. 
+
+**For stdio mode** (traditional MCP client configuration):
+=======
 For the GitHub Copilot Coding Agent environment, you need to configure the MCP server to use the standard location where the JAR will be placed by the setup workflow.
 
 **Option A: Using the copilot-setup-steps.yml workflow (Recommended)**
@@ -213,12 +242,32 @@ See [mcp-client-config-copilot-agent.json](mcp-client-config-copilot-agent.json)
 
 If you've downloaded the artifact manually, configure with the actual path where you extracted it:
 
+
 ```json
 {
   "mcpServers": {
     "osgi": {
       "command": "java",
       "args": ["-jar", "/path/to/downloaded/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "description": "MCP server providing OSGi tools for AI agents"
+    }
+  }
+}
+```
+
+**For server mode** (recommended for repository-based configurations):
+
+First, start the server in server mode:
+```bash
+java -jar /path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
+```
+
+Then configure your MCP client to connect to the HTTP endpoint:
+```json
+{
+  "mcpServers": {
+    "osgi": {
+      "url": "http://localhost:3000/mcp",
       "description": "MCP server providing OSGi tools for AI agents"
     }
   }

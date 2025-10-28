@@ -3,6 +3,10 @@
 ## Project Overview
 This repository provides an MCP (Model Context Protocol) server for OSGi tools. The server is implemented in Java using the official MCP Java SDK v0.14.1 and exposes tools that can be used by AI agents like GitHub Copilot.
 
+The server supports two modes:
+- **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout
+- **server mode**: Runs an HTTP server with SSE (Server-Sent Events) transport on a configurable port
+
 ## Building the Project
 
 ### Prerequisites
@@ -23,6 +27,19 @@ mvn clean test
 
 The build produces a shaded JAR at `target/mcp-osgi-server-1.0.0-SNAPSHOT.jar` that includes all dependencies.
 
+## Running the Server
+
+```bash
+# Run in stdio mode (default)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
+
+# Run in server mode on default port (3000)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server
+
+# Run in server mode on a specific port
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 8080
+```
+
 ## Testing
 
 ### Running Tests
@@ -42,9 +59,10 @@ mvn clean verify
 
 ### Test Structure
 - Tests are located in `src/test/java/io/github/laeubi/mcp/osgi/`
-- The main test class is `OsgiMcpServerTest.java`
+- `OsgiMcpServerTest.java` - Tests for stdio mode
+- `OsgiMcpServerModeTest.java` - Tests for server mode
 - Tests use ProcessBuilder to fork a new JVM running the actual MCP server JAR
-- Tests communicate with the server via stdin/stdout using JSON-RPC protocol
+- Tests communicate with the server via stdin/stdout (stdio mode) or HTTP (server mode) using JSON-RPC protocol
 
 ### Testing Strategy
 The tests use a **ProcessBuilder-based approach** rather than reflection:
