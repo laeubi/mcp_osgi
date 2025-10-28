@@ -194,7 +194,6 @@ When adding new MCP tools:
    - Update `mcp-client-config-example.json` to add the new tool to the `tools` array
    - Update the configuration examples in `README.md` to include the new tool in the `tools` array
    - Update the configuration example in this file (`copilot-instructions.md`) to include the new tool in the `tools` array
-   - Update the configuration in `.github/workflows/README.md` to include the new tool in the `tools` array
    - Note: The `tools` field is optional (tools are auto-discovered by MCP clients), but we keep it updated so users can easily see what's available and choose which tools to enable
 
 ### Error Handling
