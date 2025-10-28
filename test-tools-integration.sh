@@ -34,8 +34,21 @@ EOF
     
     if [ -z "$SESSION_ID" ]; then
         # First, connect to SSE endpoint to get session ID
-        SESSION_ID=$(timeout 2 curl -s -N "$SERVER_URL/mcp/sse" | grep "data:" | head -1 | sed 's/.*sessionId=\([^"]*\).*/\1/')
+        local sse_response=$(timeout 2 curl -s -N "$SERVER_URL/mcp/sse" | grep "data:" | head -1)
+        SESSION_ID=$(echo "$sse_response" | sed 's/.*sessionId=\([^"&]*\).*/\1/')
+        
+        if [ -z "$SESSION_ID" ]; then
+            echo "ERROR: Failed to extract session ID from SSE response"
+            echo "SSE Response: $sse_response"
+            return 1
+        fi
         echo "Got session ID: $SESSION_ID"
+    fi
+    
+    # Validate session ID is not empty before making request
+    if [ -z "$SESSION_ID" ]; then
+        echo "ERROR: SESSION_ID is empty, cannot make request"
+        return 1
     fi
     
     # Send request to message endpoint
