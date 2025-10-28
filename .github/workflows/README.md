@@ -28,9 +28,9 @@ When using this repository with GitHub Copilot Coding Agent, configure your MCP 
 {
   "mcpServers": {
     "osgi": {
-      "type": "stdio",
+      "type": "local",
       "command": "java",
-      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server"],
       "tools": ["hello_osgi", "bundle_info", "find"]
     }
   }
