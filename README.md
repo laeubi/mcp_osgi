@@ -161,16 +161,17 @@ To enable the MCP server for GitHub Copilot in this repository, add the followin
 {
   "mcpServers": {
     "osgi": {
-      "type": "local",
+      "type": "stdio",
       "command": "java",
-      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"]
+      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"]
     }
   }
 }
 ```
 
-**Note:** The `tools` list shows all available tools. You can limit this list to specific tools if needed, but it's recommended to list all available tools so users know what's available.
+**Available tools:** `hello_osgi`, `bundle_info`, `find`
+
+**Note:** The tools are automatically discovered by the MCP client when it connects to the server. You don't need to specify them in the configuration.
 
 #### Option 2: Using in Other Repositories (Reusable Workflow)
 
@@ -217,14 +218,15 @@ Then configure your MCP client (see `mcp-client-config-example.json`):
 {
   "mcpServers": {
     "osgi": {
+      "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"],
-      "description": "MCP server providing OSGi tools for AI agents"
+      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"]
     }
   }
 }
 ```
+
+**Available tools:** `hello_osgi`, `bundle_info`, `find`
 
 For GitHub Copilot, place this configuration in your MCP settings file (typically `~/.mcp/settings.json` or as configured in your IDE).
 

@@ -125,15 +125,15 @@ To use with GitHub Copilot or other MCP clients, add this configuration:
 {
   "mcpServers": {
     "osgi": {
-      "type": "local",
+      "type": "stdio",
       "command": "java",
-      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"],
-      "description": "MCP server providing OSGi tools for AI agents"
+      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"]
     }
   }
 }
 ```
+
+**Available tools:** `hello_osgi`, `bundle_info`, `find`
 
 ## Project Structure
 
@@ -171,10 +171,11 @@ When adding new MCP tools:
 2. Implement the tool handler as a method returning `Mono<McpSchema.CallToolResult>`
 3. Register the tool in the server builder using `.toolCall()`
 4. Add comprehensive tests for the new tool
-5. **IMPORTANT**: Update the MCP configuration snippets to include the new tool:
-   - Update `mcp-client-config-example.json` to add the new tool to the `tools` array
-   - Update the configuration examples in `README.md` to include the new tool
-   - Update the configuration example in this file (`copilot-instructions.md`) to include the new tool
+5. **IMPORTANT**: Update documentation to list the new tool:
+   - Update the "Available tools" list in `README.md`
+   - Update the "Available tools" list in `.github/copilot-instructions.md`
+   - Update the "Available tools" list in `.github/workflows/README.md`
+   - Tools are automatically discovered by MCP clients; they don't need to be listed in the configuration
 
 ### Error Handling
 - Use Mono.error() for reactive error handling
