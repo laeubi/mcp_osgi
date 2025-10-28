@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "osgi": {
+      "type": "local",
+      "command": "java",
+      "args": [
+        "-jar",
+        "/home/runner/target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
+      ],
+      "tools": ["hello_osgi"],
+      "description": "MCP server providing OSGi tools for AI agents"
+    }
+  }
+}
