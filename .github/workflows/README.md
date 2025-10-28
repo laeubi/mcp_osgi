@@ -12,13 +12,18 @@ CI workflow that runs on pull requests and pushes to main. It:
 - Runs tests
 - Publishes test reports
 
-### `copilot-setup-steps.yml`
+### `copilot-setup-steps.yml` and `action.yml`
 Composite action used by the GitHub Copilot Coding Agent to set up the environment for this repository. This is the **recommended setup for in-repository use**.
+
+**Files:**
+- `.github/copilot-setup-steps.yml` - The main setup configuration
+- `.github/action.yml` - A copy for GitHub to recognize the composite action
 
 **What it does:**
 - Checks out the repository code
 - Sets up JDK 21 with Maven
-- Builds the MCP server JAR in `target/` directory
+- Builds the MCP server JAR with `mvn clean package -DskipTests`
+- Copies the JAR to `/home/runner/tools/osgi_mcp/server.jar`
 
 **Configuration for GitHub Copilot:**
 
@@ -39,7 +44,8 @@ When using this repository with GitHub Copilot Coding Agent, configure your MCP 
 
 **Note:** The `tools` field is optional (tools are auto-discovered), but listing them makes it easy to see what's available.
 
-The Copilot Coding Agent will automatically run `copilot-setup-steps.yml` to build the JAR before using it.
+**How it works:**
+The Copilot Coding Agent will automatically run the composite action defined in `.github/action.yml` (or `copilot-setup-steps.yml`) to build and deploy the JAR before starting the MCP server. This ensures the JAR file exists at the expected location when the server starts.
 
 For more information, see the [GitHub Copilot Coding Agent documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment).
 

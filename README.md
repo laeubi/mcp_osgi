@@ -193,11 +193,13 @@ This repository is configured to work directly with the GitHub Copilot Coding Ag
 
 **Setup Steps:**
 
-The repository includes a `.github/copilot-setup-steps.yml` file that configures the build environment for the Copilot Coding Agent. This workflow:
+The repository includes composite action files (`.github/copilot-setup-steps.yml` and `.github/action.yml`) that configure the build environment for the Copilot Coding Agent. This composite action:
 1. Checks out the repository code
 2. Sets up Java 21 with Maven
-3. Builds the MCP server JAR
+3. Builds the MCP server JAR with `mvn clean package -DskipTests`
 4. Copies it to `/home/runner/tools/osgi_mcp/server.jar`
+
+The Copilot Coding Agent automatically runs this composite action before starting the MCP server, ensuring the JAR file is available.
 
 **Configure MCP Server in Repository:**
 
