@@ -140,15 +140,41 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 
 To use this MCP server with GitHub Copilot or other MCP clients, configure the client to connect to the server via stdio transport.
 
-#### Option 1: Using the Shared GitHub Actions Workflow (Recommended for GitHub Copilot Coding Agent)
+#### Option 1: Using with GitHub Copilot Coding Agent in Repository (Recommended)
 
-This repository provides a reusable GitHub Actions workflow that automatically builds the MCP server JAR for use with the GitHub Copilot Coding Agent. This is the recommended approach for integrating the MCP server into your GitHub Copilot environment.
+This repository is configured to work directly with the GitHub Copilot Coding Agent. According to the [GitHub Copilot Coding Agent documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment), you can customize the agent environment by adding MCP servers.
 
-According to the [GitHub Copilot Coding Agent documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment), you can customize the agent environment by adding additional tools and MCP servers.
+**Setup Steps:**
 
-**Step 1: Create a workflow in your repository**
+The repository includes a `.github/copilot-setup-steps.yml` file that configures the build environment for the Copilot Coding Agent. This workflow:
+1. Checks out the repository code
+2. Sets up Java 21 with Maven
+3. Builds the MCP server JAR in the `target/` directory
 
-Create a file `.github/workflows/setup-copilot-mcp.yml` in your repository:
+**Configure MCP Server in Repository:**
+
+To enable the MCP server for GitHub Copilot in this repository, add the following configuration to your repository's MCP settings. The Copilot Coding Agent will use the locally built JAR:
+
+```json
+{
+  "mcpServers": {
+    "osgi": {
+      "type": "local",
+      "command": "java",
+      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "tools": ["hello_osgi", "bundle_info", "find"]
+    }
+  }
+}
+```
+
+**Note:** The `tools` list shows all available tools. You can limit this list to specific tools if needed, but it's recommended to list all available tools so users know what's available.
+
+#### Option 2: Using in Other Repositories (Reusable Workflow)
+
+If you want to use this MCP server in other repositories, you can use the reusable GitHub Actions workflow:
+
+**Create a workflow file** `.github/workflows/setup-copilot-mcp.yml`:
 
 ```yaml
 name: Setup Copilot MCP Server
@@ -156,7 +182,7 @@ name: Setup Copilot MCP Server
 on:
   workflow_dispatch:  # Manual trigger via GitHub UI
   push:
-    branches: [ main ]  # Or trigger on push to main
+    branches: [ main ]
 
 jobs:
   build-mcp-server:
@@ -164,43 +190,16 @@ jobs:
     uses: laeubi/mcp_osgi/.github/workflows/build-mcp-server.yml@main
 ```
 
-See [.github/workflows/example-copilot-setup.yml.example](.github/workflows/example-copilot-setup.yml.example) for a complete example with additional configuration steps.
+See [.github/workflows/example-copilot-setup.yml.example](.github/workflows/example-copilot-setup.yml.example) for a complete example.
 
-**What the workflow does:**
-
-The reusable workflow will:
+**The workflow will:**
 1. Checkout the `laeubi/mcp_osgi` repository
-2. Install Java 17
-3. Build the MCP server JAR using Maven
-4. Upload the JAR as an artifact named `mcp-osgi-server`
+2. Build the MCP server JAR
+3. Upload it as an artifact
 
-**Step 2: Download and use the MCP server**
+You can then download and use the JAR in your workflow or configure it for local use.
 
-After the workflow runs, the built JAR will be available as a workflow artifact. You can:
-
-- **Download it manually**: Go to the workflow run in GitHub Actions and download the `mcp-osgi-server` artifact
-- **Use in subsequent workflow steps**: Use the `actions/download-artifact@v4` action to download and use the JAR in your workflow
-- **Configure locally**: Download the artifact and configure it in your local GitHub Copilot settings
-
-**Step 3: Configure for GitHub Copilot Coding Agent**
-
-Once you have the JAR file, configure your GitHub Copilot to use it. Add this configuration to your MCP settings file (typically `~/.mcp/settings.json` or as configured in your IDE):
-
-```json
-{
-  "mcpServers": {
-    "osgi": {
-      "command": "java",
-      "args": ["-jar", "/path/to/downloaded/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "description": "MCP server providing OSGi tools for AI agents"
-    }
-  }
-}
-```
-
-Replace `/path/to/downloaded/mcp-osgi-server-1.0.0-SNAPSHOT.jar` with the actual path where you extracted the downloaded artifact.
-
-#### Option 2: Manual Configuration (Local Use)
+#### Option 3: Manual Configuration (Local Use)
 
 For local use or manual configuration with GitHub Copilot, build the JAR locally:
 
@@ -218,6 +217,7 @@ Then configure your MCP client (see `mcp-client-config-example.json`):
     "osgi": {
       "command": "java",
       "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "tools": ["hello_osgi", "bundle_info", "find"],
       "description": "MCP server providing OSGi tools for AI agents"
     }
   }

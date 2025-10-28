@@ -12,8 +12,37 @@ CI workflow that runs on pull requests and pushes to main. It:
 - Runs tests
 - Publishes test reports
 
-### `build-mcp-server.yml` (Reusable Workflow)
-A reusable workflow that can be called from other repositories to build the MCP OSGi Server JAR. This is intended for use with the GitHub Copilot Coding Agent.
+### `copilot-setup-steps.yml`
+Composite action used by the GitHub Copilot Coding Agent to set up the environment for this repository. This is the **recommended setup for in-repository use**.
+
+**What it does:**
+- Checks out the repository code
+- Sets up JDK 21 with Maven
+- Builds the MCP server JAR in `target/` directory
+
+**Configuration for GitHub Copilot:**
+
+When using this repository with GitHub Copilot Coding Agent, configure your MCP server settings as follows:
+
+```json
+{
+  "mcpServers": {
+    "osgi": {
+      "type": "local",
+      "command": "java",
+      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "tools": ["hello_osgi", "bundle_info", "find"]
+    }
+  }
+}
+```
+
+The Copilot Coding Agent will automatically run `copilot-setup-steps.yml` to build the JAR before using it.
+
+For more information, see the [GitHub Copilot Coding Agent documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment).
+
+### `build-mcp-server.yml` (Reusable Workflow - For External Use)
+A reusable workflow that can be called from other repositories to build the MCP OSGi Server JAR. This is for users who want to integrate the MCP server into their own repositories.
 
 **Usage in your repository:**
 
@@ -33,7 +62,7 @@ jobs:
 ```
 
 **What it does:**
-- Checks out the `laeubi/mcp_osgi` repository
+- Checks out the `laeubi/mcp_osgi` repository into a subdirectory
 - Sets up Java 17 with Maven cache
 - Builds the MCP server JAR using `mvn clean package`
 - Uploads the JAR as an artifact named `mcp-osgi-server`
