@@ -30,13 +30,14 @@ When using this repository with GitHub Copilot Coding Agent, configure your MCP 
     "osgi": {
       "type": "stdio",
       "command": "java",
-      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"]
+      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "tools": ["hello_osgi", "bundle_info", "find"]
     }
   }
 }
 ```
 
-**Available tools:** `hello_osgi`, `bundle_info`, `find`
+**Note:** The `tools` field is optional (tools are auto-discovered), but listing them makes it easy to see what's available.
 
 The Copilot Coding Agent will automatically run `copilot-setup-steps.yml` to build the JAR before using it.
 
