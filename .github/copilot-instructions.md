@@ -3,6 +3,10 @@
 ## Project Overview
 This repository provides an MCP (Model Context Protocol) server for OSGi tools. The server is implemented in Java using the official MCP Java SDK v0.14.1 and exposes tools that can be used by AI agents like GitHub Copilot.
 
+The server supports two modes:
+- **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout
+- **server mode**: Runs an HTTP server with SSE (Server-Sent Events) transport on a configurable port
+
 ## Building the Project
 
 ### Prerequisites
@@ -23,6 +27,19 @@ mvn clean test
 
 The build produces a shaded JAR at `target/mcp-osgi-server-1.0.0-SNAPSHOT.jar` that includes all dependencies.
 
+## Running the Server
+
+```bash
+# Run in stdio mode (default)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
+
+# Run in server mode on default port (3000)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server
+
+# Run in server mode on a specific port
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 8080
+```
+
 ## Testing
 
 ### Running Tests
@@ -42,9 +59,10 @@ mvn clean verify
 
 ### Test Structure
 - Tests are located in `src/test/java/io/github/laeubi/mcp/osgi/`
-- The main test class is `OsgiMcpServerTest.java`
+- `OsgiMcpServerTest.java` - Tests for stdio mode
+- `OsgiMcpServerModeTest.java` - Tests for server mode
 - Tests use ProcessBuilder to fork a new JVM running the actual MCP server JAR
-- Tests communicate with the server via stdin/stdout using JSON-RPC protocol
+- Tests communicate with the server via stdin/stdout (stdio mode) or HTTP (server mode) using JSON-RPC protocol
 
 ### Testing Strategy
 The tests use a **ProcessBuilder-based approach** rather than reflection:
@@ -125,13 +143,16 @@ To use with GitHub Copilot or other MCP clients, add this configuration:
 {
   "mcpServers": {
     "osgi": {
+      "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "description": "MCP server providing OSGi tools for AI agents"
+      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "tools": ["hello_osgi", "bundle_info", "find"]
     }
   }
 }
 ```
+
+**Note:** The `tools` field is optional (tools are auto-discovered), but listing them makes it easy to see what's available.
 
 ## Project Structure
 
@@ -169,6 +190,12 @@ When adding new MCP tools:
 2. Implement the tool handler as a method returning `Mono<McpSchema.CallToolResult>`
 3. Register the tool in the server builder using `.toolCall()`
 4. Add comprehensive tests for the new tool
+5. **IMPORTANT**: Update documentation and configuration to include the new tool:
+   - Update `mcp-client-config-example.json` to add the new tool to the `tools` array
+   - Update the configuration examples in `README.md` to include the new tool in the `tools` array
+   - Update the configuration example in this file (`copilot-instructions.md`) to include the new tool in the `tools` array
+   - Update the configuration in `.github/workflows/README.md` to include the new tool in the `tools` array
+   - Note: The `tools` field is optional (tools are auto-discovered by MCP clients), but we keep it updated so users can easily see what's available and choose which tools to enable
 
 ### Error Handling
 - Use Mono.error() for reactive error handling
