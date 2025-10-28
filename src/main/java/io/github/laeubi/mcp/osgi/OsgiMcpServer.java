@@ -2,8 +2,12 @@ package io.github.laeubi.mcp.osgi;
 
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -18,11 +22,14 @@ import java.util.Map;
  * MCP Java SDK to expose OSGi-related tools that can be used by AI agents 
  * like GitHub Copilot.
  * 
- * The server communicates via JSON-RPC 2.0 over stdio transport.
+ * The server supports two modes:
+ * - stdio mode (default): Communicates via JSON-RPC 2.0 over stdio transport
+ * - server mode: Runs an HTTP server with SSE (Server-Sent Events) transport
  */
 public class OsgiMcpServer {
     
     private static final Logger logger = LoggerFactory.getLogger(OsgiMcpServer.class);
+    private static final int DEFAULT_PORT = 3000;
     
     /**
      * Create the hello_osgi tool definition.
@@ -248,19 +255,11 @@ public class OsgiMcpServer {
     }
     
     /**
-     * Main entry point.
+     * Build the MCP server with all tools configured.
      */
-    public static void main(String[] args) {
-        logger.info("Starting MCP OSGi Server using official MCP Java SDK...");
-        
-        // Create JSON mapper
-        McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
-        
-        // Create stdio transport provider
-        StdioServerTransportProvider transportProvider = new StdioServerTransportProvider(jsonMapper);
-        
-        // Build and configure the MCP server
-        var server = McpServer.async(transportProvider)
+    private static McpServer.AsyncSpecification<?> buildServer(
+            io.modelcontextprotocol.spec.McpServerTransportProvider transportProvider) {
+        return McpServer.async(transportProvider)
             .serverInfo("mcp-osgi-server", "1.0.0")
             .capabilities(McpSchema.ServerCapabilities.builder()
                 .tools(true)
@@ -270,10 +269,25 @@ public class OsgiMcpServer {
             .toolCall(createBundleInfoTool(), (exchange, request) -> 
                 handleBundleInfo(request.arguments()))
             .toolCall(createFindTool(), (exchange, request) -> 
-                handleFind(request.arguments()))
-            .build();
+                handleFind(request.arguments()));
+    }
+    
+    /**
+     * Start the server in stdio mode.
+     */
+    private static void startStdioMode() throws InterruptedException {
+        logger.info("Starting MCP OSGi Server in stdio mode...");
         
-        logger.info("MCP OSGi Server started successfully");
+        // Create JSON mapper
+        McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
+        
+        // Create stdio transport provider
+        StdioServerTransportProvider transportProvider = new StdioServerTransportProvider(jsonMapper);
+        
+        // Build and start the MCP server
+        var server = buildServer(transportProvider).build();
+        
+        logger.info("MCP OSGi Server started successfully in stdio mode");
         
         // Keep the server running
         try {
@@ -281,6 +295,83 @@ public class OsgiMcpServer {
         } catch (InterruptedException e) {
             logger.info("Server interrupted, shutting down...");
             server.closeGracefully().block();
+            throw e;
+        }
+    }
+    
+    /**
+     * Start the server in HTTP server mode with SSE transport.
+     */
+    private static void startServerMode(int port) throws Exception {
+        logger.info("Starting MCP OSGi Server in server mode on port {}...", port);
+        
+        // Create JSON mapper
+        McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
+        
+        // Create HTTP SSE transport provider (which is also a servlet)
+        HttpServletSseServerTransportProvider transportProvider = 
+            HttpServletSseServerTransportProvider.builder()
+                .jsonMapper(jsonMapper)
+                .baseUrl("http://localhost:" + port)
+                .messageEndpoint("/mcp/message")
+                .sseEndpoint("/mcp/sse")
+                .build();
+        
+        // Build the MCP server - this will automatically set the session factory
+        var mcpServer = buildServer(transportProvider).build();
+        
+        // Create Jetty server
+        Server jettyServer = new Server(port);
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setContextPath("/");
+        jettyServer.setHandler(context);
+        
+        // Add the transport provider as a servlet - it extends HttpServlet
+        context.addServlet(new ServletHolder(transportProvider), "/mcp/*");
+        
+        // Start the Jetty server
+        try {
+            jettyServer.start();
+            logger.info("MCP OSGi Server started successfully on http://localhost:{}/mcp", port);
+            jettyServer.join();
+        } catch (Exception e) {
+            logger.error("Failed to start server", e);
+            throw e;
+        } finally {
+            mcpServer.closeGracefully().block();
+        }
+    }
+    
+    /**
+     * Main entry point.
+     * 
+     * Usage:
+     *   java -jar mcp-osgi-server.jar              # Start in stdio mode (default)
+     *   java -jar mcp-osgi-server.jar server       # Start in server mode on port 3000
+     *   java -jar mcp-osgi-server.jar server 8080  # Start in server mode on port 8080
+     */
+    public static void main(String[] args) {
+        try {
+            if (args.length > 0 && "server".equalsIgnoreCase(args[0])) {
+                // Server mode
+                int port = DEFAULT_PORT;
+                if (args.length > 1) {
+                    try {
+                        port = Integer.parseInt(args[1]);
+                    } catch (NumberFormatException e) {
+                        logger.error("Invalid port number: {}", args[1]);
+                        System.err.println("Usage: java -jar mcp-osgi-server.jar server [port]");
+                        System.exit(1);
+                    }
+                }
+                startServerMode(port);
+            } else {
+                // Stdio mode (default)
+                startStdioMode();
+            }
+        } catch (Exception e) {
+            logger.error("Server failed", e);
+            System.exit(1);
         }
     }
 }
