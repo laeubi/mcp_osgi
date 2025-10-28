@@ -1,17 +1,10 @@
 {
   "mcpServers": {
     "osgi": {
-      "type": "stdio",
+      "type": "local",
       "command": "java",
-      "args": [
-        "-jar",
-        "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
-      ],
-      "tools": [
-        "hello_osgi",
-        "bundle_info",
-        "find"
-      ]
+      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server"],
+      "tools": ["hello_osgi", "bundle_info", "find"]
     }
   }
 }
