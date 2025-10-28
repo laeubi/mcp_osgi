@@ -176,26 +176,29 @@ This repository is configured to work directly with the GitHub Copilot Coding Ag
 The repository includes a `.github/copilot-setup-steps.yml` file that configures the build environment for the Copilot Coding Agent. This workflow:
 1. Checks out the repository code
 2. Sets up Java 21 with Maven
-3. Builds the MCP server JAR in the `target/` directory
+3. Builds the MCP server JAR
+4. Copies it to `/home/runner/tools/osgi_mcp/server.jar`
 
 **Configure MCP Server in Repository:**
 
-To enable the MCP server for GitHub Copilot in this repository, add the following configuration to your repository's MCP settings. The Copilot Coding Agent will use the locally built JAR:
+To enable the MCP server for GitHub Copilot in this repository, add the following configuration to your repository's MCP settings. The Copilot Coding Agent will use the JAR at the standard location:
 
 ```json
 {
   "mcpServers": {
     "osgi": {
-      "type": "stdio",
+      "type": "local",
       "command": "java",
-      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server"],
       "tools": ["hello_osgi", "bundle_info", "find"]
     }
   }
 }
 ```
 
-**Note:** The `tools` field is optional (tools are auto-discovered by MCP clients), but listing them here makes it easy for users to see what's available and choose which tools to enable.
+**Note:** 
+- The `tools` field is optional (tools are auto-discovered by MCP clients), but listing them here makes it easy for users to see what's available and choose which tools to enable.
+- The `server` argument starts the MCP server in HTTP/SSE mode, which is required for GitHub Copilot Coding Agent integration.
 
 #### Option 2: Using in Other Repositories (Reusable Workflow)
 
@@ -241,7 +244,7 @@ For the GitHub Copilot Coding Agent environment, you need to configure the MCP s
 
 **Option A: Using the copilot-setup-steps.yml workflow (Recommended)**
 
-If you're using the `.github/copilot-setup-steps.yml` workflow from this repository, it automatically copies the JAR to `/home/runner/target/`. Configure your MCP settings as:
+If you're using the `.github/copilot-setup-steps.yml` workflow from this repository, it automatically copies the JAR to `/home/runner/tools/osgi_mcp/server.jar`. Configure your MCP settings as:
 
 ```json
 {
@@ -251,14 +254,17 @@ If you're using the `.github/copilot-setup-steps.yml` workflow from this reposit
       "command": "java",
       "args": [
         "-jar",
-        "/home/runner/target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
+        "/home/runner/tools/osgi_mcp/server.jar",
+        "server"
       ],
-      "tools": ["hello_osgi"],
+      "tools": ["hello_osgi", "bundle_info", "find"],
       "description": "MCP server providing OSGi tools for AI agents"
     }
   }
 }
 ```
+
+**Note:** The `server` argument starts the MCP server in HTTP/SSE mode, which is required for GitHub Copilot Coding Agent integration.
 
 See [mcp-client-config-copilot-agent.json](mcp-client-config-copilot-agent.json) for a complete example.
 

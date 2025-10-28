@@ -5,9 +5,10 @@
       "command": "java",
       "args": [
         "-jar",
-        "/home/runner/target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
+        "/home/runner/tools/osgi_mcp/server.jar",
+        "server"
       ],
-      "tools": ["hello_osgi"],
+      "tools": ["hello_osgi", "bundle_info", "find"],
       "description": "MCP server providing OSGi tools for AI agents"
     }
   }

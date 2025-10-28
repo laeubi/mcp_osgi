@@ -23,4 +23,4 @@ steps:
     run: |
       mkdir -p /home/runner/tools/osgi_mcp
       cp target/mcp-osgi-server-1.0.0-SNAPSHOT.jar /home/runner/tools/osgi_mcp/server.jar
-      echo "MCP server JAR copied to /home/runner/target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
+      echo "MCP server JAR copied to /home/runner/tools/osgi_mcp/server.jar"
