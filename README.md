@@ -3,26 +3,6 @@ A MCP server dedicated to bring tools useful in OSGi context
 
 > **Note**: This project now uses the [official MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk) (v0.14.1) instead of a homebrew implementation. This provides a standardized, production-ready implementation of the Model Context Protocol with better maintainability and feature support.
 
-## Quick Start
-
-### Verify Server Access
-
-To verify that the OSGi MCP server is accessible in your session:
-
-```bash
-./verify-server-access.sh
-```
-
-This script checks:
-- ✅ Server JAR availability at `/home/runner/tools/osgi_mcp/server.jar`
-- ✅ Server running status on port 3000
-- ✅ SSE endpoint accessibility
-- ✅ Configuration format
-
-For detailed verification results, see:
-- **[VERIFICATION_ANSWER.md](VERIFICATION_ANSWER.md)** - Quick answer and test results
-- **[SERVER_ACCESS_VERIFICATION.md](SERVER_ACCESS_VERIFICATION.md)** - Comprehensive documentation
-
 ## Introduction
 
 ### What is MCP?
@@ -149,16 +129,6 @@ The server supports two modes:
 
 ### Testing the Server
 
-A test script is provided to demonstrate basic interaction with the MCP server in stdio mode:
-
-```bash
-# Make the script executable (if not already)
-chmod +x test-mcp-server.sh
-
-# Run the test
-./test-mcp-server.sh
-```
-
 To manually test the server in stdio mode, you can pipe JSON-RPC requests to it:
 
 ```bash
@@ -183,35 +153,17 @@ curl http://localhost:3000/mcp/sse
 
 To use this MCP server with GitHub Copilot or other MCP clients, you can configure the client to connect using either stdio or HTTP transport.
 
-#### Stdio Mode (Traditional)
+#### Stdio Mode Configuration
 
-For traditional MCP clients that support stdio transport:
-
-#### Option 1: Using with GitHub Copilot Coding Agent in Repository (Recommended)
-
-This repository is configured to work directly with the GitHub Copilot Coding Agent. According to the [GitHub Copilot Coding Agent documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment), you can customize the agent environment by adding MCP servers.
-
-**Setup Steps:**
-
-The repository includes composite action files (`.github/copilot-setup-steps.yml` and `.github/action.yml`) that configure the build environment for the Copilot Coding Agent. This composite action:
-1. Checks out the repository code
-2. Sets up Java 21 with Maven
-3. Builds the MCP server JAR with `mvn clean package -DskipTests`
-4. Copies it to `/home/runner/tools/osgi_mcp/server.jar`
-
-The Copilot Coding Agent automatically runs this composite action before starting the MCP server, ensuring the JAR file is available.
-
-**Configure MCP Server in Repository:**
-
-To enable the MCP server for GitHub Copilot in this repository, add the following configuration to your repository's MCP settings. The Copilot Coding Agent will use the JAR at the standard location:
+For traditional MCP clients that support stdio transport, configure your MCP client as follows (see `mcp-client-config-example.json`):
 
 ```json
 {
   "mcpServers": {
     "osgi": {
-      "type": "local",
+      "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server"],
+      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
       "tools": ["hello_osgi", "bundle_info", "find"]
     }
   }
@@ -220,98 +172,18 @@ To enable the MCP server for GitHub Copilot in this repository, add the followin
 
 **Note:** 
 - The `tools` field is optional (tools are auto-discovered by MCP clients), but listing them here makes it easy for users to see what's available and choose which tools to enable.
-- The `server` argument starts the MCP server in HTTP/SSE mode, which is required for GitHub Copilot Coding Agent integration.
+- Replace `/absolute/path/to/` with the actual path where you built or extracted the JAR file.
 
-#### Option 2: Using in Other Repositories (Reusable Workflow)
+#### Server Mode Configuration (HTTP/SSE)
 
-If you want to use this MCP server in other repositories, you can use the reusable GitHub Actions workflow:
+For server mode configuration, first build and start the server:
 
-**Create a workflow file** `.github/workflows/setup-copilot-mcp.yml`:
-
-```yaml
-name: Setup Copilot MCP Server
-
-on:
-  workflow_dispatch:  # Manual trigger via GitHub UI
-  push:
-    branches: [ main ]
-
-jobs:
-  build-mcp-server:
-    name: Build MCP OSGi Server
-    uses: laeubi/mcp_osgi/.github/workflows/build-mcp-server.yml@main
-```
-
-See [.github/workflows/example-copilot-setup.yml.example](.github/workflows/example-copilot-setup.yml.example) for a complete example.
-
-**The workflow will:**
-1. Checkout the `laeubi/mcp_osgi` repository
-2. Build the MCP server JAR
-3. Upload it as an artifact
-
-You can then download and use the JAR in your workflow or configure it for local use.
-
-After the workflow runs, the built JAR will be available as a workflow artifact. You can:
-
-- **Download it manually**: Go to the workflow run in GitHub Actions and download the `mcp-osgi-server` artifact
-- **Use in subsequent workflow steps**: Use the `actions/download-artifact@v4` action to download and use the JAR in your workflow
-- **Configure locally**: Download the artifact and configure it in your local GitHub Copilot settings
-
-**Step 3: Configure for GitHub Copilot Coding Agent**
-
-Once you have the JAR file, configure your GitHub Copilot to use it. 
-
-**For stdio mode** (traditional MCP client configuration):
-For the GitHub Copilot Coding Agent environment, you need to configure the MCP server to use the standard location where the JAR will be placed by the setup workflow.
-
-**Option A: Using the copilot-setup-steps.yml workflow (Recommended)**
-
-If you're using the `.github/copilot-setup-steps.yml` workflow from this repository, it automatically copies the JAR to `/home/runner/tools/osgi_mcp/server.jar`. Configure your MCP settings as:
-
-```json
-{
-  "mcpServers": {
-    "osgi": {
-      "type": "local",
-      "command": "java",
-      "args": [
-        "-jar",
-        "/home/runner/tools/osgi_mcp/server.jar",
-        "server"
-      ],
-      "tools": ["hello_osgi", "bundle_info", "find"],
-      "description": "MCP server providing OSGi tools for AI agents"
-    }
-  }
-}
-```
-
-**Note:** The `server` argument starts the MCP server in HTTP/SSE mode, which is required for GitHub Copilot Coding Agent integration.
-
-See [mcp-client-config-copilot-agent.json](mcp-client-config-copilot-agent.json) for a complete example.
-
-**Option B: Using a downloaded artifact**
-
-If you've downloaded the artifact manually, configure with the actual path where you extracted it:
-
-
-```json
-{
-  "mcpServers": {
-    "osgi": {
-      "command": "java",
-      "args": ["-jar", "/path/to/downloaded/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "description": "MCP server providing OSGi tools for AI agents"
-    }
-  }
-}
-```
-
-**For server mode** (recommended for repository-based configurations):
-
-First, start the server in server mode:
 ```bash
-java -jar /path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
+# Build the project
+mvn clean package
+
+# Start the server in server mode on port 3000
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
 ```
 
 Then configure your MCP client to connect to the HTTP endpoint:
@@ -326,36 +198,7 @@ Then configure your MCP client to connect to the HTTP endpoint:
 }
 ```
 
-Replace `/path/to/downloaded/mcp-osgi-server-1.0.0-SNAPSHOT.jar` with the actual path where you extracted the downloaded artifact.
-
-#### Option 2: Manual Configuration (Local Use)
-
-For local use or manual configuration with GitHub Copilot, build the JAR locally:
-
-```bash
-# Clone and build the MCP server
-git clone https://github.com/laeubi/mcp_osgi.git
-cd mcp_osgi
-mvn clean package
-```
-
-Then configure your MCP client (see `mcp-client-config-example.json`):
-```json
-{
-  "mcpServers": {
-    "osgi": {
-      "type": "stdio",
-      "command": "java",
-      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"]
-    }
-  }
-}
-```
-
-**Note:** The `tools` field is optional, but listing them makes it easy to see what's available and choose which tools to enable.
-
-For GitHub Copilot, place this configuration in your MCP settings file (typically `~/.mcp/settings.json` or as configured in your IDE).
+For GitHub Copilot, place the configuration in your MCP settings file (typically `~/.mcp/settings.json` or as configured in your IDE).
 
 ## Project Structure
 
@@ -363,39 +206,33 @@ For GitHub Copilot, place this configuration in your MCP settings file (typicall
 mcp_osgi/
 ├── .github/
 │   ├── workflows/
-│   │   ├── pr-verification.yml                            # CI workflow for PR verification
-│   │   ├── build-mcp-server.yml                           # Reusable workflow for building MCP server
-│   │   └── example-copilot-setup.yml.example              # Example workflow for Copilot integration
-│   ├── copilot-instructions.md                            # GitHub Copilot instructions
-│   └── copilot-setup-steps.yml                            # Setup steps for Copilot Coding Agent
+│   │   ├── pr-verification.yml              # CI workflow for PR verification
+│   │   └── copilot-setup-steps.yml          # Setup steps for Copilot Coding Agent
+│   └── copilot-instructions.md              # GitHub Copilot instructions
 ├── src/
-│   └── main/
+│   ├── main/
+│   │   └── java/
+│   │       └── io/github/laeubi/mcp/osgi/
+│   │           └── OsgiMcpServer.java       # Main MCP server implementation
+│   └── test/
 │       └── java/
-│           └── io/
-│               └── github/
-│                   └── laeubi/
-│                       └── mcp/
-│                           └── osgi/
-│                               └── OsgiMcpServer.java    # Main MCP server implementation
-├── pom.xml                                                # Maven build configuration
-├── test-mcp-server.sh                                     # Test script for the server
-├── mcp-client-config-example.json                         # Example MCP client configuration
-├── mcp-client-config-copilot-agent.json                   # Example config for Copilot Coding Agent
-├── .gitignore                                             # Git ignore patterns
-├── README.md                                              # This file
-└── LICENSE                                                # Eclipse Public License 2.0
+│           └── io/github/laeubi/mcp/osgi/
+│               ├── OsgiMcpServerTest.java          # Tests for stdio mode
+│               └── OsgiMcpServerModeTest.java      # Tests for server mode
+├── pom.xml                                  # Maven build configuration
+├── mcp-client-config-example.json           # Example MCP client configuration
+├── .gitignore                               # Git ignore patterns
+├── README.md                                # This file
+└── LICENSE                                  # Eclipse Public License 2.0
 ```
 
 ### Key Files
 
 - **OsgiMcpServer.java**: The main MCP server implementation using the official MCP Java SDK that exposes OSGi tools (`hello_osgi`, `bundle_info`, `find`)
 - **pom.xml**: Maven configuration with dependencies for the MCP Java SDK (v0.14.1) and SLF4J (logging)
-- **test-mcp-server.sh**: Shell script to demonstrate server interaction
-- **mcp-client-config-example.json**: Example configuration for MCP clients (general use)
-- **mcp-client-config-copilot-agent.json**: Example configuration specifically for GitHub Copilot Coding Agent
-- **copilot-setup-steps.yml**: Setup steps for building and deploying the MCP server in Copilot Coding Agent environment
-- **build-mcp-server.yml**: Reusable GitHub Actions workflow for building the MCP server JAR
-- **example-copilot-setup.yml.example**: Example workflow showing how to use the reusable workflow in your repository
+- **mcp-client-config-example.json**: Example configuration for MCP clients
+- **copilot-setup-steps.yml**: GitHub Actions workflow for setting up the environment in Copilot Coding Agent
+
 
 ### Implementation Details
 
