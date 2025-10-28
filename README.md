@@ -36,6 +36,8 @@ This project provides an example MCP server implementation that exposes OSGi-rel
 
 **Example Tools Implemented:**
 - `hello_osgi` - A demonstration tool showing basic MCP server functionality with OSGi context
+- `bundle_info` - Analyzes JAR or MANIFEST.MF files to determine if they are OSGi bundles and returns metadata
+- `find` - Searches for OSGi packages, bundles, or capabilities and returns download information
 
 ### Potential OSGi Tools for MCP Exposure
 
@@ -255,7 +257,7 @@ mcp_osgi/
 
 ### Key Files
 
-- **OsgiMcpServer.java**: The main MCP server implementation using the official MCP Java SDK that exposes the `hello_osgi` tool
+- **OsgiMcpServer.java**: The main MCP server implementation using the official MCP Java SDK that exposes OSGi tools (`hello_osgi`, `bundle_info`, `find`)
 - **pom.xml**: Maven configuration with dependencies for the MCP Java SDK (v0.14.1) and SLF4J (logging)
 - **test-mcp-server.sh**: Shell script to demonstrate server interaction
 - **mcp-client-config-example.json**: Example configuration for MCP clients like GitHub Copilot
