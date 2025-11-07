@@ -1,15 +1,16 @@
-# MCP Server Configuration for GitHub Copilot Coding Agent
+# MCP Configuration
 
-This directory contains the MCP server configuration for GitHub Copilot Coding Agent when used from the **GitHub web UI**.
+This directory contains the MCP (Model Context Protocol) server configuration for the GitHub Copilot Coding Agent web UI.
 
-## About this Configuration
+## Important: Two Different Configuration Approaches
 
-The `config.json` file in this directory is used by GitHub Copilot Coding Agent when:
-- You invoke Copilot from the GitHub web interface (github.com)
-- The agent runs in GitHub Actions environment
-- The MCP server needs to be started and connected to
+This repository supports **two distinct ways** to use the MCP OSGi server:
 
-## Configuration Format
+### 1. GitHub Copilot Coding Agent (Web UI) 🌐
+
+**Configuration location**: `.mcp/config.json` (this directory)
+
+The configuration in this directory is automatically used by the GitHub Copilot Coding Agent when it runs in the web UI (via GitHub Actions).
 
 ```json
 {
@@ -23,41 +24,54 @@ The `config.json` file in this directory is used by GitHub Copilot Coding Agent 
 }
 ```
 
-### Configuration Fields
+**Key features**:
+- Uses **HTTP/SSE transport** (Server-Sent Events)
+- Server runs in "server" mode on port 3000
+- Agent connects to SSE endpoint at `/mcp/sse`
+- Configured in repository, managed by GitHub
+- Automatically set up via `.github/copilot-setup-steps.yml`
 
-- **`command`**: The command to start the MCP server process
-- **`args`**: Arguments passed to the command
-  - Must include `"server"` and a port number to start in HTTP/SSE mode
-  - The JAR path is set by the `copilot-setup-steps.yml` workflow
-- **`url`**: The SSE endpoint URL where the agent will connect
-  - Format: `http://localhost:{port}/mcp/sse`
-  - Must match the port specified in the args
+### 2. Local IDE (VS Code, JetBrains, etc.) 💻
 
-## How It Works
+**Configuration location**: Your IDE's MCP settings (NOT this directory)
 
-1. GitHub Copilot Coding Agent reads this configuration when started from the web UI
-2. It runs the `copilot-setup-steps.yml` workflow to build and deploy the server JAR
-3. It starts the MCP server process using the `command` and `args`
-4. It connects to the server via the SSE endpoint specified in `url`
-5. The server handles tool calls and returns results to the agent
+For local development, configure the MCP server in your IDE settings using **stdio transport**:
 
-## Important Notes
+```json
+{
+  "mcpServers": {
+    "osgi": {
+      "type": "stdio",
+      "command": "java",
+      "args": ["-jar", "/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
+      "tools": ["hello_osgi", "bundle_info", "find"]
+    }
+  }
+}
+```
 
-⚠️ **This configuration is NOT for local IDE use!**
+**Key features**:
+- Uses **stdio transport** (stdin/stdout)
+- Server runs in default stdio mode
+- Direct process communication
+- Configured locally by each developer
+- Path points to your local build
 
-- **Repository config** (`.mcp/config.json`): For GitHub Copilot Agent in web UI
-  - Uses HTTP/SSE server mode
-  - Starts server as a subprocess
-  
-- **Local IDE config** (e.g., VS Code settings): For local development
-  - Typically uses stdio mode
-  - See `mcp-client-config-example.json` for local IDE configuration examples
+## Configuration Matrix
 
-## Transport Mode
+| Environment | Transport | Config Location | Endpoint | Server Mode |
+|------------|-----------|----------------|----------|-------------|
+| GitHub Web UI | HTTP/SSE | `.mcp/config.json` | `/mcp/sse` | `server 3000` |
+| Local IDE | stdio | IDE settings | N/A | (default) |
 
-This configuration uses **HTTP/SSE (Server-Sent Events)** transport, not stdio:
-- The server runs an embedded HTTP server on the specified port
-- GitHub Copilot connects via HTTP and receives updates through SSE
-- This is required for the web UI agent mode running in GitHub Actions
+## Why Two Different Approaches?
 
-For more information, see the main [README.md](../README.md) documentation.
+- **GitHub Web UI**: Runs in a sandboxed GitHub Actions environment where HTTP/SSE transport is more reliable and secure
+- **Local IDE**: Runs on your machine where direct process communication (stdio) is simpler and more efficient
+
+## Documentation
+
+For more details, see:
+- [README.md](../README.md) - Main project documentation
+- [.github/copilot-instructions.md](../.github/copilot-instructions.md) - Copilot-specific instructions
+- [Official GitHub docs](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp) - MCP configuration for Copilot Coding Agent

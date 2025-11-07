@@ -22,9 +22,10 @@ import java.util.Map;
  * MCP Java SDK to expose OSGi-related tools that can be used by AI agents 
  * like GitHub Copilot.
  * 
- * The server supports two modes:
+ * The server supports three modes:
  * - stdio mode (default): Communicates via JSON-RPC 2.0 over stdio transport
- * - server mode: Runs an HTTP server with SSE (Server-Sent Events) transport
+ * - server mode: Runs an HTTP server with SSE (Server-Sent Events) transport using Jetty
+ * - jdkserver mode: Runs a lightweight HTTP server using JDK's built-in http server
  */
 public class OsgiMcpServer {
     
@@ -343,17 +344,51 @@ public class OsgiMcpServer {
     }
     
     /**
+     * Start the server in JDK HTTP server mode (lightweight alternative).
+     */
+    private static void startJdkServerMode(int port) throws Exception {
+        logger.info("Starting MCP OSGi Server in jdkserver mode on port {}...", port);
+        
+        // Create HTTP server wrapper
+        JdkHttpServerWrapper httpServer = new JdkHttpServerWrapper(port, "/mcp");
+        
+        // Register tools with schemas
+        httpServer.registerTool(createHelloOsgiTool(), args1 -> handleHelloOsgi(args1));
+        httpServer.registerTool(createBundleInfoTool(), args1 -> handleBundleInfo(args1));
+        httpServer.registerTool(createFindTool(), args1 -> handleFind(args1));
+        
+        // Start HTTP server
+        try {
+            httpServer.start();
+            logger.info("MCP OSGi Server started successfully via JDK HTTP Server on port {}", port);
+            logger.info("Access the server at http://localhost:{}/mcp", port);
+            
+            // Keep the server running
+            Thread.currentThread().join();
+        } catch (InterruptedException e) {
+            logger.info("Server interrupted, shutting down...");
+            httpServer.stop();
+            throw e;
+        } catch (Exception e) {
+            logger.error("Failed to start JDK HTTP server", e);
+            throw e;
+        }
+    }
+    
+    /**
      * Main entry point.
      * 
      * Usage:
-     *   java -jar mcp-osgi-server.jar              # Start in stdio mode (default)
-     *   java -jar mcp-osgi-server.jar server       # Start in server mode on port 3000
-     *   java -jar mcp-osgi-server.jar server 8080  # Start in server mode on port 8080
+     *   java -jar mcp-osgi-server.jar                  # Start in stdio mode (default)
+     *   java -jar mcp-osgi-server.jar server           # Start in server mode (Jetty + SSE) on port 3000
+     *   java -jar mcp-osgi-server.jar server 8080      # Start in server mode on port 8080
+     *   java -jar mcp-osgi-server.jar jdkserver        # Start in jdkserver mode (JDK HTTP) on port 8080
+     *   java -jar mcp-osgi-server.jar jdkserver 9000   # Start in jdkserver mode on port 9000
      */
     public static void main(String[] args) {
         try {
             if (args.length > 0 && "server".equalsIgnoreCase(args[0])) {
-                // Server mode
+                // Server mode (Jetty + SSE)
                 int port = DEFAULT_PORT;
                 if (args.length > 1) {
                     try {
@@ -365,6 +400,19 @@ public class OsgiMcpServer {
                     }
                 }
                 startServerMode(port);
+            } else if (args.length > 0 && "jdkserver".equalsIgnoreCase(args[0])) {
+                // JDK HTTP server mode (lightweight alternative)
+                int port = 8080;  // Default port for jdkserver
+                if (args.length > 1) {
+                    try {
+                        port = Integer.parseInt(args[1]);
+                    } catch (NumberFormatException e) {
+                        logger.error("Invalid port number: {}", args[1]);
+                        System.err.println("Usage: java -jar mcp-osgi-server.jar jdkserver [port]");
+                        System.exit(1);
+                    }
+                }
+                startJdkServerMode(port);
             } else {
                 // Stdio mode (default)
                 startStdioMode();

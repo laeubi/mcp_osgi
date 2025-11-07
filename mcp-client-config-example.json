@@ -3,8 +3,15 @@
     "osgi": {
       "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"]
+      "args": [
+        "-jar",
+        "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"
+      ],
+      "tools": [
+        "hello_osgi",
+        "bundle_info",
+        "find"
+      ]
     }
   }
 }

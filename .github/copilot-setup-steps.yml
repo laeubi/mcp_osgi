@@ -1,0 +1,31 @@
+name: Setup Java and Maven Environment
+description: Sets up Java, Maven, and builds the MCP OSGi Server for GitHub Copilot Coding Agent
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Set up Maven 3.9.11
+      uses: stCarolas/setup-maven@v5
+      with:
+        maven-version: '3.9.11'
+
+    - name: Package JAR (skip tests)
+      shell: bash
+      run: mvn clean package -DskipTests -B -V
+
+    - name: Copy JAR to standard location
+      shell: bash
+      run: |
+        mkdir -p /home/runner/tools/osgi_mcp
+        cp target/mcp-osgi-server-1.0.0-SNAPSHOT.jar /home/runner/tools/osgi_mcp/server.jar
+        echo "MCP server JAR copied to /home/runner/tools/osgi_mcp/server.jar"

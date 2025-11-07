@@ -154,35 +154,6 @@ To use with GitHub Copilot or other MCP clients, add this configuration:
 
 **Note:** The `tools` field is optional (tools are auto-discovered), but listing them makes it easy to see what's available.
 
-### Configuration for Different Environments
-
-**For GitHub Copilot Coding Agent (Web UI):**
-
-The repository includes `.mcp/config.json` which is used when running GitHub Copilot Coding Agent from the GitHub web interface. This configuration:
-- Is specifically for the agent mode that runs in GitHub Actions
-- Uses HTTP/SSE server mode (not stdio)
-- Requires both `command`/`args` to start the server AND `url` to connect to it
-- Is different from local IDE configurations
-
-Example (see `.mcp/config.json`):
-```json
-{
-  "mcpServers": {
-    "osgi": {
-      "command": "java",
-      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server", "3000"],
-      "url": "http://localhost:3000/mcp/sse"
-    }
-  }
-}
-```
-
-**For Local IDE Use (VS Code, JetBrains):**
-
-The configuration shown above (with `"type": "stdio"`) is for local IDE use. Local IDEs typically use stdio transport for direct process communication.
-
-**Key Difference:** Repository configuration (`.mcp/config.json`) uses HTTP/SSE server mode for GitHub web UI agent, while local IDE configuration uses stdio mode.
-
 ## Project Structure
 
 ```
@@ -223,6 +194,7 @@ When adding new MCP tools:
    - Update `mcp-client-config-example.json` to add the new tool to the `tools` array
    - Update the configuration examples in `README.md` to include the new tool in the `tools` array
    - Update the configuration example in this file (`copilot-instructions.md`) to include the new tool in the `tools` array
+   - Update the configuration in `.github/workflows/README.md` to include the new tool in the `tools` array
    - Note: The `tools` field is optional (tools are auto-discovered by MCP clients), but we keep it updated so users can easily see what's available and choose which tools to enable
 
 ### Error Handling
