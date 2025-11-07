@@ -202,26 +202,31 @@ For GitHub Copilot, place the configuration in your MCP settings file (typically
 
 #### GitHub Copilot Coding Agent Configuration
 
-For GitHub Copilot Coding Agent in GitHub Actions, the repository includes a `.mcp/config.json` file with the correct configuration for stdio mode. This configuration is automatically used when the Copilot Coding Agent starts.
+For GitHub Copilot Coding Agent in GitHub Actions, the repository includes a `.mcp/config.json` file with the correct configuration. GitHub Copilot Coding Agent requires HTTP/SSE server mode (not stdio mode) for MCP communication.
 
 The key points for GitHub Copilot Coding Agent:
-- Use `"type": "local"` for stdio-based communication
-- **Do NOT include** `"server"` in the args - this starts HTTP mode instead
-- The server will communicate via stdin/stdout when run without the `server` argument
+- The server must run in **server mode** using the `"server"` argument
+- Specify both the `command`/`args` to start the server AND the `url` where it will be accessible
+- The server starts an HTTP server with SSE (Server-Sent Events) transport
+- GitHub Copilot will start the server process and connect to it via HTTP
 
 Example configuration (see `.mcp/config.json`):
 ```json
 {
   "mcpServers": {
     "osgi": {
-      "type": "local",
       "command": "java",
-      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"]
+      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server", "3000"],
+      "url": "http://localhost:3000/mcp/sse"
     }
   }
 }
 ```
+
+This configuration:
+- Starts the server process in HTTP/SSE mode on port 3000
+- Tells GitHub Copilot to connect to the SSE endpoint at `http://localhost:3000/mcp/sse`
+- The server will be accessible at `http://localhost:3000/mcp` (base URL)
 
 ## Project Structure
 
