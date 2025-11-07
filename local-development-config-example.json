@@ -1,0 +1,12 @@
+{
+  "_comment": "This is an example configuration for LOCAL DEVELOPMENT ONLY.",
+  "_comment2": "This stdio configuration does NOT work with GitHub Copilot Coding Agent.",
+  "_comment3": "For GitHub Copilot Coding Agent, see .mcp/config.json instead.",
+  "mcpServers": {
+    "osgi": {
+      "type": "stdio",
+      "command": "java",
+      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"]
+    }
+  }
+}

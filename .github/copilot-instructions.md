@@ -3,9 +3,13 @@
 ## Project Overview
 This repository provides an MCP (Model Context Protocol) server for OSGi tools. The server is implemented in Java using the official MCP Java SDK v0.14.1 and exposes tools that can be used by AI agents like GitHub Copilot.
 
-The server supports two modes:
-- **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout
-- **server mode**: Runs an HTTP server with SSE (Server-Sent Events) transport on a configurable port
+> **🎯 Primary Use Case**: This server is designed for **GitHub Copilot Coding Agent** in repository-scoped agent mode. When you invoke Copilot from the GitHub web interface, it automatically runs this server via HTTP/SSE transport.
+
+The server supports two transport modes:
+- **stdio mode**: Communicates via JSON-RPC 2.0 over stdin/stdout (for local testing and development)
+- **server mode**: Runs an HTTP server with SSE (Server-Sent Events) transport (used by GitHub Copilot Coding Agent)
+
+> **⚠️ Important**: GitHub Copilot Coding Agent **only uses server mode (HTTP/SSE)**. stdio mode does not work with repository-scoped GitHub Copilot Agent.
 
 ## Building the Project
 
@@ -29,16 +33,28 @@ The build produces a shaded JAR at `target/mcp-osgi-server-1.0.0-SNAPSHOT.jar` t
 
 ## Running the Server
 
+### In GitHub Copilot Coding Agent (Primary Use Case)
+
+The server is automatically started by GitHub Copilot Coding Agent when you invoke it from the GitHub web interface. The agent:
+1. Runs `.github/workflows/copilot-setup-steps.yml` to build the JAR
+2. Starts the server in HTTP/SSE mode using the configuration in `.mcp/config.json`
+3. Connects to the server and makes tools available
+
+**No manual configuration is needed** for this mode.
+
+### Local Testing and Development
+
+For local development and testing, you can run the server manually:
+
 ```bash
-# Run in stdio mode (default)
+# Run in stdio mode (for command-line testing)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 
-# Run in server mode on default port (3000)
-java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server
-
-# Run in server mode on a specific port
-java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 8080
+# Run in server mode (for testing HTTP/SSE locally)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
 ```
+
+> **Important**: stdio mode is useful for local testing, but GitHub Copilot Coding Agent **only uses HTTP/SSE server mode**. Do not configure stdio mode for repository-scoped agent usage.
 
 ## Testing
 
@@ -135,34 +151,16 @@ void testNewTool() throws Exception {
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 ```
 
-The server communicates via stdio (standard input/output) using the MCP JSON-RPC protocol.
+The server communicates via stdio (standard input/output) or HTTP/SSE depending on how it's started. For GitHub Copilot Coding Agent, it uses HTTP/SSE mode.
 
-### Testing with MCP Clients
-To use with GitHub Copilot or other MCP clients, add this configuration:
-```json
-{
-  "mcpServers": {
-    "osgi": {
-      "type": "stdio",
-      "command": "java",
-      "args": ["-jar", "target/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"]
-    }
-  }
-}
-```
+### MCP Server Configuration
 
-**Note:** The `tools` field is optional (tools are auto-discovered), but listing them makes it easy to see what's available.
+**For GitHub Copilot Coding Agent:**
 
-### Configuration for Different Environments
-
-**For GitHub Copilot Coding Agent (Web UI):**
-
-The repository includes `.mcp/config.json` which is used when running GitHub Copilot Coding Agent from the GitHub web interface. This configuration:
+The repository includes `.mcp/config.json` which is automatically used by GitHub Copilot Coding Agent when invoked from the GitHub web interface. This configuration:
 - Is specifically for the agent mode that runs in GitHub Actions
 - Uses HTTP/SSE server mode (not stdio)
 - Requires both `command`/`args` to start the server AND `url` to connect to it
-- Is different from local IDE configurations
 
 Example (see `.mcp/config.json`):
 ```json
@@ -177,11 +175,16 @@ Example (see `.mcp/config.json`):
 }
 ```
 
-**For Local IDE Use (VS Code, JetBrains):**
+> **⚠️ Important**: This is the **only** configuration mode that works with GitHub Copilot Coding Agent. stdio mode does not work in repository-scoped agent mode.
 
-The configuration shown above (with `"type": "stdio"`) is for local IDE use. Local IDEs typically use stdio transport for direct process communication.
+**For Local Testing:**
 
-**Key Difference:** Repository configuration (`.mcp/config.json`) uses HTTP/SSE server mode for GitHub web UI agent, while local IDE configuration uses stdio mode.
+If you want to test the server locally using stdio mode (for development/debugging), you can run:
+```bash
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
+```
+
+However, note that **local IDE MCP client configurations are outside the scope of this repository**. This server is primarily designed for GitHub Copilot Coding Agent usage.
 
 ## Project Structure
 
@@ -219,11 +222,7 @@ When adding new MCP tools:
 2. Implement the tool handler as a method returning `Mono<McpSchema.CallToolResult>`
 3. Register the tool in the server builder using `.toolCall()`
 4. Add comprehensive tests for the new tool
-5. **IMPORTANT**: Update documentation and configuration to include the new tool:
-   - Update `mcp-client-config-example.json` to add the new tool to the `tools` array
-   - Update the configuration examples in `README.md` to include the new tool in the `tools` array
-   - Update the configuration example in this file (`copilot-instructions.md`) to include the new tool in the `tools` array
-   - Note: The `tools` field is optional (tools are auto-discovered by MCP clients), but we keep it updated so users can easily see what's available and choose which tools to enable
+5. Update documentation in `README.md` to list the new tool and its purpose
 
 ### Error Handling
 - Use Mono.error() for reactive error handling
@@ -242,16 +241,31 @@ When adding new MCP tools:
 
 ## CI/CD
 
-### GitHub Actions Workflow
-The repository uses GitHub Actions for continuous integration:
-- Workflow file: `.github/workflows/pr-verification.yml`
-- Runs on: Pull requests and pushes to main
-- Actions performed:
+### GitHub Actions Workflows
+
+The repository uses GitHub Actions for continuous integration and MCP server setup:
+
+#### PR Verification Workflow
+- **Workflow file**: `.github/workflows/pr-verification.yml`
+- **Runs on**: Pull requests and pushes to main
+- **Actions performed**:
   - Checkout code
   - Set up JDK 17
   - Build with Maven
   - Run tests
   - Publish test reports to PR
+
+#### Copilot Setup Steps Workflow
+- **Workflow file**: `.github/workflows/copilot-setup-steps.yml`
+- **Purpose**: Builds and deploys the MCP server for GitHub Copilot Coding Agent
+- **Runs on**: When invoked by GitHub Copilot Coding Agent from the web UI
+- **Actions performed**:
+  - Checkout code
+  - Set up JDK 21 and Maven
+  - Build the server JAR (skipping tests for speed)
+  - Copy JAR to standard location `/home/runner/tools/osgi_mcp/server.jar`
+
+> **⚠️ Critical**: The Copilot Setup Steps workflow **must not be modified** unless explicitly requested. According to [GitHub's documentation](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment), the workflow **must** be named `copilot-setup-steps.yml` and the job **must** be named `copilot-setup-steps`. Modifying these names will break GitHub Copilot Coding Agent integration.
 
 ### Test Reports
 Test results are automatically published to pull requests using the test-reporter action.
@@ -264,6 +278,8 @@ When contributing to this project:
 3. Follow the existing code style
 4. Update documentation as needed
 5. Keep changes focused and atomic
+
+> **⚠️ Important**: Do **not** modify `.github/workflows/copilot-setup-steps.yml` unless explicitly requested by the repository owner. This workflow is required for GitHub Copilot Coding Agent integration, and changing its name or structure will break the integration.
 
 ## Troubleshooting
 

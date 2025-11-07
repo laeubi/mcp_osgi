@@ -1,6 +1,10 @@
 # mcp_osgi
 A MCP server dedicated to bring tools useful in OSGi context
 
+> **🎯 Primary Use Case**: This MCP server is designed for **GitHub Copilot Coding Agent** in repository-scoped agent mode. The agent runs in GitHub Actions and connects to the server via HTTP/SSE transport.
+
+> **📖 Documentation**: [Extend Coding Agent with MCP](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp)
+
 > **Note**: This project now uses the [official MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk) (v0.14.1) instead of a homebrew implementation. This provides a standardized, production-ready implementation of the Model Context Protocol with better maintainability and feature support.
 
 ## Introduction
@@ -112,128 +116,107 @@ The server uses the official **MCP Java SDK v0.14.1** which provides:
 ```bash
 # Build the project
 mvn clean package
-
-# Run the MCP server in stdio mode (default - communicates via stdin/stdout)
-java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
-
-# Run the MCP server in server mode (HTTP server with SSE transport)
-java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server
-
-# Run the MCP server in server mode on a specific port
-java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 8080
 ```
 
-The server supports two modes:
-- **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout. This is suitable for process-based MCP clients.
-- **server mode**: Runs an embedded HTTP server with SSE (Server-Sent Events) transport. This is suitable for repository-based MCP configurations (like GitHub Copilot) that don't support stdio.
+The server supports two transport modes:
+- **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout. Useful for local testing and development.
+- **server mode**: Runs an embedded HTTP server with SSE (Server-Sent Events) transport. **This is the mode used by GitHub Copilot Coding Agent.**
 
-### Testing the Server
-
-To manually test the server in stdio mode, you can pipe JSON-RPC requests to it:
+> **Note**: GitHub Copilot Coding Agent automatically builds and starts the server - you don't need to run it manually. The commands below are for local development and testing only.
 
 ```bash
-# Start the server
+# Run the MCP server in stdio mode (for local testing)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 
-# In another terminal, send a request (example):
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}' | java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
-```
-
-To test the server in server mode, start it with the `server` parameter and access it via HTTP:
-
-```bash
-# Start the server in server mode on port 3000
+# Run the MCP server in server mode (for testing GitHub Copilot configuration locally)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
-
-# In another terminal, access the SSE endpoint:
-curl http://localhost:3000/mcp/sse
 ```
 
-### Using with GitHub Copilot
+### Using with GitHub Copilot Coding Agent
 
-The MCP server can be used in two different ways depending on your environment:
+This MCP server is designed to be used with **GitHub Copilot Coding Agent** in repository-scoped agent mode, where the agent runs in GitHub Actions and can access custom tools through MCP servers.
 
-#### 🌐 GitHub Copilot Coding Agent (Web UI)
+> **📖 Official Documentation**: [Extend Coding Agent with MCP](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp)
 
-**Use case:** Running Copilot from the GitHub web interface (github.com)
+#### How It Works
 
-The repository includes `.mcp/config.json` that automatically configures the MCP server for GitHub Copilot Coding Agent when invoked from the web UI. No manual configuration needed!
+1. **Navigate** to your repository on GitHub.com
+2. **Invoke** GitHub Copilot Coding Agent from the web interface
+3. **Automatic Setup**: The agent automatically:
+   - Runs the `.github/workflows/copilot-setup-steps.yml` workflow to build the server
+   - Starts the server in HTTP/SSE mode using the configuration in `.mcp/config.json`
+   - Connects to the server via SSE (Server-Sent Events) transport
+   - Makes all registered tools available to the Copilot agent
 
-**How it works:**
-1. Navigate to your repository on GitHub.com
-2. Invoke GitHub Copilot Coding Agent from the web interface
-3. The agent automatically:
-   - Runs the `copilot-setup-steps.yml` workflow to build the server
-   - Starts the server in HTTP/SSE mode
-   - Connects to the server and makes tools available
+#### Configuration Files
 
-**Configuration:** See `.mcp/config.json` and `.mcp/README.md` for details.
-
-#### 💻 Local IDE Use (VS Code, JetBrains, etc.)
-
-**Use case:** Using Copilot locally in your IDE
-
-For local development, you'll need to configure your IDE's MCP settings manually.
-
-##### Stdio Mode Configuration (Recommended for Local Use)
-
-For traditional MCP clients that support stdio transport, configure your MCP client as follows (see `mcp-client-config-example.json`):
-
+**`.mcp/config.json`** - MCP server configuration for GitHub Copilot Coding Agent:
 ```json
 {
   "mcpServers": {
     "osgi": {
-      "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
-      "tools": ["hello_osgi", "bundle_info", "find"]
+      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server", "3000"],
+      "url": "http://localhost:3000/mcp/sse"
     }
   }
 }
 ```
 
-**Note:** 
-- The `tools` field is optional (tools are auto-discovered by MCP clients), but listing them here makes it easy for users to see what's available and choose which tools to enable.
-- Replace `/absolute/path/to/` with the actual path where you built or extracted the JAR file.
+**`.github/workflows/copilot-setup-steps.yml`** - Workflow that builds and deploys the MCP server JAR to the expected location.
 
-#### Server Mode Configuration (HTTP/SSE) - For Local Use
+> **⚠️ Important**: These files are configured specifically for the GitHub Copilot Coding Agent environment. The workflow job and step names must match GitHub's requirements and should not be modified unless explicitly needed.
 
-If you want to run the server in HTTP/SSE mode locally (for testing or specific client requirements), first build and start the server:
+#### Available Tools
+
+The server exposes the following tools to the Copilot agent:
+- `hello_osgi` - Demonstration tool showing basic MCP server functionality
+- `bundle_info` - Analyzes JAR or MANIFEST.MF files to determine if they are OSGi bundles
+- `find` - Searches for OSGi packages, bundles, or capabilities and returns download information
+
+For more details about the configuration, see `.mcp/README.md`.
+
+---
+
+### Local Development and Testing
+
+While this server is primarily designed for GitHub Copilot Coding Agent, you can also run it locally for development and testing purposes.
+
+#### Running the Server Locally
 
 ```bash
 # Build the project
 mvn clean package
 
-# Start the server in server mode on port 3000
+# Run in stdio mode (default - for command-line testing)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
+
+# Run in server mode (HTTP/SSE - for testing the GitHub Copilot configuration locally)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
 ```
 
-Then configure your MCP client to connect to the HTTP endpoint:
-```json
-{
-  "mcpServers": {
-    "osgi": {
-      "url": "http://localhost:3000/mcp/sse",
-      "description": "MCP server providing OSGi tools for AI agents"
-    }
-  }
-}
+#### Testing with stdio Mode
+
+In stdio mode, the server communicates via JSON-RPC 2.0 over stdin/stdout:
+
+```bash
+# Start the server and pipe a test request
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}' | java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 ```
 
-**Note:** 
-- Use `/mcp/sse` for the SSE endpoint (Server-Sent Events transport)
-- The server exposes both `/mcp` (base) and `/mcp/sse` (SSE endpoint) paths
-- The `.mcp/config.json` in this repository is pre-configured for GitHub Copilot Coding Agent (web UI)
+#### Testing with Server Mode (HTTP/SSE)
 
----
+In server mode, the server runs an HTTP server with SSE transport:
 
-### Configuration Summary
+```bash
+# Start the server
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
 
-| Environment | Config Location | Transport | Command Args | URL/Endpoint |
-|------------|----------------|-----------|--------------|--------------|
-| **GitHub Web UI** | `.mcp/config.json` | HTTP/SSE | Include `"server" "3000"` | `http://localhost:3000/mcp/sse` |
-| **Local IDE** | IDE settings | stdio | No `"server"` arg | N/A (stdio) |
-| **Manual HTTP/SSE** | Client config | HTTP/SSE | Include `"server" "{port}"` | `http://localhost:{port}/mcp/sse` |
+# In another terminal, test the SSE endpoint
+curl http://localhost:3000/mcp/sse
+```
+
+> **Note**: stdio mode is useful for local testing and development, but **it is not used** by GitHub Copilot Coding Agent. The GitHub agent exclusively uses HTTP/SSE server mode as configured in `.mcp/config.json`.
 
 ## Project Structure
 
@@ -255,7 +238,7 @@ mcp_osgi/
 │               ├── OsgiMcpServerTest.java          # Tests for stdio mode
 │               └── OsgiMcpServerModeTest.java      # Tests for server mode
 ├── pom.xml                                  # Maven build configuration
-├── mcp-client-config-example.json           # Example MCP client configuration
+├── local-development-config-example.json    # Example config for local stdio testing (NOT for GitHub Copilot)
 ├── .gitignore                               # Git ignore patterns
 ├── README.md                                # This file
 └── LICENSE                                  # Eclipse Public License 2.0
@@ -265,7 +248,7 @@ mcp_osgi/
 
 - **OsgiMcpServer.java**: The main MCP server implementation using the official MCP Java SDK that exposes OSGi tools (`hello_osgi`, `bundle_info`, `find`)
 - **pom.xml**: Maven configuration with dependencies for the MCP Java SDK (v0.14.1) and SLF4J (logging)
-- **mcp-client-config-example.json**: Example configuration for MCP clients
+- **local-development-config-example.json**: Example stdio configuration for local testing (not for GitHub Copilot)
 - **copilot-setup-steps.yml**: GitHub Actions workflow for setting up the environment in Copilot Coding Agent
 
 
