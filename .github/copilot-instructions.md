@@ -3,9 +3,13 @@
 ## Project Overview
 This repository provides an MCP (Model Context Protocol) server for OSGi tools. The server is implemented in Java using the official MCP Java SDK v0.14.1 and exposes tools that can be used by AI agents like GitHub Copilot.
 
-The server supports two modes:
-- **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout
-- **server mode**: Runs an HTTP server with SSE (Server-Sent Events) transport on a configurable port
+> **🎯 Primary Use Case**: This server is designed for **GitHub Copilot Coding Agent** in repository-scoped agent mode. When you invoke Copilot from the GitHub web interface, it automatically runs this server via HTTP/SSE transport.
+
+The server supports two transport modes:
+- **stdio mode**: Communicates via JSON-RPC 2.0 over stdin/stdout (for local testing and development)
+- **server mode**: Runs an HTTP server with SSE (Server-Sent Events) transport (used by GitHub Copilot Coding Agent)
+
+> **⚠️ Important**: GitHub Copilot Coding Agent **only uses server mode (HTTP/SSE)**. stdio mode does not work with repository-scoped GitHub Copilot Agent.
 
 ## Building the Project
 
@@ -274,6 +278,8 @@ When contributing to this project:
 3. Follow the existing code style
 4. Update documentation as needed
 5. Keep changes focused and atomic
+
+> **⚠️ Important**: Do **not** modify `.github/workflows/copilot-setup-steps.yml` unless explicitly requested by the repository owner. This workflow is required for GitHub Copilot Coding Agent integration, and changing its name or structure will break the integration.
 
 ## Troubleshooting
 
