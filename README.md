@@ -118,9 +118,10 @@ The server uses the official **MCP Java SDK v0.14.1** which provides:
 mvn clean package
 ```
 
-The server supports two transport modes:
+The server supports three transport modes:
 - **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdin/stdout. Useful for local testing and development.
-- **server mode**: Runs an embedded HTTP server with SSE (Server-Sent Events) transport. **This is the mode used by GitHub Copilot Coding Agent.**
+- **server mode**: Runs an embedded Jetty HTTP server with SSE (Server-Sent Events) transport. **This is the mode used by GitHub Copilot Coding Agent.**
+- **jdkserver mode**: Runs using JDK's built-in HTTP server (available since Java 6) with SSE transport. This is a lightweight alternative to Jetty with no external dependencies.
 
 > **Note**: GitHub Copilot Coding Agent automatically builds and starts the server - you don't need to run it manually. The commands below are for local development and testing only.
 
@@ -128,8 +129,11 @@ The server supports two transport modes:
 # Run the MCP server in stdio mode (for local testing)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 
-# Run the MCP server in server mode (for testing GitHub Copilot configuration locally)
+# Run the MCP server in server mode using Jetty (for testing GitHub Copilot configuration locally)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
+
+# Run the MCP server in jdkserver mode using JDK's built-in HTTP server (lightweight alternative)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar jdkserver 3000
 ```
 
 ### Using with GitHub Copilot Coding Agent
@@ -163,6 +167,8 @@ This MCP server is designed to be used with **GitHub Copilot Coding Agent** in r
 }
 ```
 
+> **💡 Tip**: You can also use `"jdkserver"` instead of `"server"` in the args array to use JDK's built-in HTTP server instead of Jetty. This reduces the JAR size and removes the Jetty dependency, which can be useful for lightweight deployments.
+
 **`.github/workflows/copilot-setup-steps.yml`** - Workflow that builds and deploys the MCP server JAR to the expected location.
 
 > **⚠️ Important**: These files are configured specifically for the GitHub Copilot Coding Agent environment. The workflow job and step names must match GitHub's requirements and should not be modified unless explicitly needed.
@@ -191,8 +197,11 @@ mvn clean package
 # Run in stdio mode (default - for command-line testing)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar
 
-# Run in server mode (HTTP/SSE - for testing the GitHub Copilot configuration locally)
+# Run in server mode using Jetty (HTTP/SSE - for testing the GitHub Copilot configuration locally)
 java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar server 3000
+
+# Run in jdkserver mode using JDK's built-in HTTP server (HTTP/SSE - lightweight alternative)
+java -jar target/mcp-osgi-server-1.0.0-SNAPSHOT.jar jdkserver 3000
 ```
 
 #### Testing with stdio Mode
@@ -247,6 +256,7 @@ mcp_osgi/
 ### Key Files
 
 - **OsgiMcpServer.java**: The main MCP server implementation using the official MCP Java SDK that exposes OSGi tools (`hello_osgi`, `bundle_info`, `find`)
+- **JdkHttpServerWrapper.java**: Adapter that allows the MCP server to run using JDK's built-in HTTP server instead of Jetty
 - **pom.xml**: Maven configuration with dependencies for the MCP Java SDK (v0.14.1) and SLF4J (logging)
 - **local-development-config-example.json**: Example stdio configuration for local testing (not for GitHub Copilot)
 - **copilot-setup-steps.yml**: GitHub Actions workflow for setting up the environment in Copilot Coding Agent
@@ -256,11 +266,25 @@ mcp_osgi/
 
 The server implementation leverages the official MCP Java SDK:
 
-1. **Transport Layer**: Uses `StdioServerTransportProvider` for stdio-based communication
+1. **Transport Layer**: 
+   - `StdioServerTransportProvider` for stdio-based communication
+   - `HttpServletSseServerTransportProvider` for HTTP/SSE-based communication (used with both Jetty and JDK HTTP server)
+   - `JdkHttpServerWrapper` adapts the servlet-based transport to work with JDK's built-in HTTP server
 2. **Server Type**: Built with `McpServer.async()` for non-blocking asynchronous operations
 3. **Tool Registration**: Tools are registered using the SDK's `toolCall()` method with proper schema definitions
 4. **JSON Handling**: Uses the SDK's built-in Jackson integration for JSON serialization
 5. **Reactive Streams**: Tool handlers return `Mono<CallToolResult>` for reactive processing
+
+#### HTTP Server Options
+
+The server supports two HTTP server implementations:
+
+- **Jetty** (default `server` mode): A mature, feature-rich servlet container. Use this if you need advanced HTTP features or are already using Jetty.
+- **JDK HTTP Server** (`jdkserver` mode): Uses `com.sun.net.httpserver.HttpServer` built into the JDK since Java 6. This is a lightweight alternative with:
+  - No external dependencies (only JDK)
+  - Smaller footprint
+  - Sufficient for MCP protocol requirements
+  - Ideal for containerized or resource-constrained environments
 
 ## Contributing
 
