@@ -22,9 +22,10 @@ import java.util.Map;
  * MCP Java SDK to expose OSGi-related tools that can be used by AI agents 
  * like GitHub Copilot.
  * 
- * The server supports two modes:
+ * The server supports three modes:
  * - stdio mode (default): Communicates via JSON-RPC 2.0 over stdio transport
- * - server mode: Runs an HTTP server with SSE (Server-Sent Events) transport
+ * - server mode: Runs an HTTP server with Jetty and SSE (Server-Sent Events) transport
+ * - jdkserver mode: Runs an HTTP server using JDK's built-in HTTP server with SSE transport
  */
 public class OsgiMcpServer {
     
@@ -300,10 +301,10 @@ public class OsgiMcpServer {
     }
     
     /**
-     * Start the server in HTTP server mode with SSE transport.
+     * Start the server in HTTP server mode with SSE transport using Jetty.
      */
     private static void startServerMode(int port) throws Exception {
-        logger.info("Starting MCP OSGi Server in server mode on port {}...", port);
+        logger.info("Starting MCP OSGi Server in server mode (Jetty) on port {}...", port);
         
         // Create JSON mapper
         McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
@@ -343,17 +344,57 @@ public class OsgiMcpServer {
     }
     
     /**
+     * Start the server in HTTP server mode with SSE transport using JDK's built-in HTTP server.
+     */
+    private static void startJdkServerMode(int port) throws Exception {
+        logger.info("Starting MCP OSGi Server in jdkserver mode on port {}...", port);
+        
+        // Create JSON mapper
+        McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
+        
+        // Create HTTP SSE transport provider (which is also a servlet)
+        HttpServletSseServerTransportProvider transportProvider = 
+            HttpServletSseServerTransportProvider.builder()
+                .jsonMapper(jsonMapper)
+                .baseUrl("http://localhost:" + port)
+                .messageEndpoint("/mcp/message")
+                .sseEndpoint("/mcp/sse")
+                .build();
+        
+        // Build the MCP server - this will automatically set the session factory
+        var mcpServer = buildServer(transportProvider).build();
+        
+        // Create JDK HTTP server wrapper
+        JdkHttpServerWrapper jdkServer = new JdkHttpServerWrapper(port, transportProvider);
+        
+        // Start the JDK HTTP server
+        try {
+            jdkServer.start();
+            logger.info("MCP OSGi Server started successfully on http://localhost:{}/mcp", port);
+            jdkServer.join();
+        } catch (Exception e) {
+            logger.error("Failed to start server", e);
+            throw e;
+        } finally {
+            mcpServer.closeGracefully().block();
+            jdkServer.stop();
+        }
+    }
+    
+    /**
      * Main entry point.
      * 
      * Usage:
-     *   java -jar mcp-osgi-server.jar              # Start in stdio mode (default)
-     *   java -jar mcp-osgi-server.jar server       # Start in server mode on port 3000
-     *   java -jar mcp-osgi-server.jar server 8080  # Start in server mode on port 8080
+     *   java -jar mcp-osgi-server.jar                 # Start in stdio mode (default)
+     *   java -jar mcp-osgi-server.jar server          # Start in server mode (Jetty) on port 3000
+     *   java -jar mcp-osgi-server.jar server 8080     # Start in server mode (Jetty) on port 8080
+     *   java -jar mcp-osgi-server.jar jdkserver       # Start in jdkserver mode on port 3000
+     *   java -jar mcp-osgi-server.jar jdkserver 8080  # Start in jdkserver mode on port 8080
      */
     public static void main(String[] args) {
         try {
             if (args.length > 0 && "server".equalsIgnoreCase(args[0])) {
-                // Server mode
+                // Server mode with Jetty
                 int port = DEFAULT_PORT;
                 if (args.length > 1) {
                     try {
@@ -365,6 +406,19 @@ public class OsgiMcpServer {
                     }
                 }
                 startServerMode(port);
+            } else if (args.length > 0 && "jdkserver".equalsIgnoreCase(args[0])) {
+                // JDK server mode
+                int port = DEFAULT_PORT;
+                if (args.length > 1) {
+                    try {
+                        port = Integer.parseInt(args[1]);
+                    } catch (NumberFormatException e) {
+                        logger.error("Invalid port number: {}", args[1]);
+                        System.err.println("Usage: java -jar mcp-osgi-server.jar jdkserver [port]");
+                        System.exit(1);
+                    }
+                }
+                startJdkServerMode(port);
             } else {
                 // Stdio mode (default)
                 startStdioMode();
