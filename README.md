@@ -170,7 +170,7 @@ This MCP server is designed to be used with **GitHub Copilot Coding Agent** in r
 #### Available Tools
 
 The server exposes the following tools to the Copilot agent:
-- `hello_osgi` - Demonstration tool showing basic MCP server functionality with OSGi context
+- `hello_osgi` - Demonstration tool showing basic MCP server functionality
 - `bundle_info` - Analyzes JAR or MANIFEST.MF files to determine if they are OSGi bundles
 - `find` - Searches for OSGi packages, bundles, or capabilities and returns download information
 

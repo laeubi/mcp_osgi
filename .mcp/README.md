@@ -58,7 +58,7 @@ This configuration uses **HTTP/SSE (Server-Sent Events)** transport:
 
 - **Server port**: You can change the port (default: 3000) but must update both `args` and `url` to match
 - **JAR location**: The path `/home/runner/tools/osgi_mcp/server.jar` is set by the setup workflow
-- **Do not change** the workflow file (`.github/workflows/copilot-setup-steps.yml`) unless explicitly needed - the job and step names must match GitHub's requirements
+- **Workflow file**: Do not modify `.github/workflows/copilot-setup-steps.yml` - the workflow name, job name, and step structure must match GitHub's requirements. Modifications will break GitHub Copilot Coding Agent integration. Only change this file if you need to add additional setup steps or dependencies required by your MCP server.
 
 ## Available Tools
 
