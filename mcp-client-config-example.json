@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "osgi": {
-      "type": "local",
+      "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server"],
+      "args": ["-jar", "/absolute/path/to/mcp-osgi-server-1.0.0-SNAPSHOT.jar"],
       "tools": ["hello_osgi", "bundle_info", "find"]
     }
   }
