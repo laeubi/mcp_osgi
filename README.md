@@ -213,24 +213,27 @@ Then configure your MCP client to connect to the HTTP endpoint:
 {
   "mcpServers": {
     "osgi": {
-      "url": "http://localhost:3000/mcp",
+      "url": "http://localhost:3000/mcp/sse",
       "description": "MCP server providing OSGi tools for AI agents"
     }
   }
 }
 ```
 
-**Note:** The `.mcp/config.json` in this repository is pre-configured for GitHub Copilot Coding Agent (web UI) and automatically handles server mode configuration. See `.mcp/README.md` for details.
+**Note:** 
+- Use `/mcp/sse` for the SSE endpoint (Server-Sent Events transport)
+- The server exposes both `/mcp` (base) and `/mcp/sse` (SSE endpoint) paths
+- The `.mcp/config.json` in this repository is pre-configured for GitHub Copilot Coding Agent (web UI)
 
 ---
 
 ### Configuration Summary
 
-| Environment | Config Location | Transport | Command Args | URL Required |
+| Environment | Config Location | Transport | Command Args | URL/Endpoint |
 |------------|----------------|-----------|--------------|--------------|
-| **GitHub Web UI** | `.mcp/config.json` | HTTP/SSE | Include `"server" "3000"` | Yes - `http://localhost:3000/mcp/sse` |
-| **Local IDE** | IDE settings | stdio | No `"server"` arg | No |
-| **Manual HTTP** | Client config | HTTP/SSE | Include `"server" "{port}"` | Yes - `http://localhost:{port}/mcp` |
+| **GitHub Web UI** | `.mcp/config.json` | HTTP/SSE | Include `"server" "3000"` | `http://localhost:3000/mcp/sse` |
+| **Local IDE** | IDE settings | stdio | No `"server"` arg | N/A (stdio) |
+| **Manual HTTP/SSE** | Client config | HTTP/SSE | Include `"server" "{port}"` | `http://localhost:{port}/mcp/sse` |
 
 ## Project Structure
 
