@@ -22,9 +22,10 @@ import java.util.Map;
  * MCP Java SDK to expose OSGi-related tools that can be used by AI agents 
  * like GitHub Copilot.
  * 
- * The server supports two modes:
+ * The server supports three modes:
  * - stdio mode (default): Communicates via JSON-RPC 2.0 over stdio transport
- * - server mode: Runs an HTTP server with SSE (Server-Sent Events) transport
+ * - server mode: Runs an HTTP server with Jetty and SSE (Server-Sent Events) transport
+ * - jdkserver mode: Runs an HTTP server using JDK's built-in HTTP server with SSE transport
  */
 public class OsgiMcpServer {
     

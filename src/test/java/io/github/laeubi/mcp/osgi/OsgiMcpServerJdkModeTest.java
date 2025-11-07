@@ -1,7 +1,5 @@
 package io.github.laeubi.mcp.osgi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class OsgiMcpServerJdkModeTest {
     
     private Process serverProcess;
-    private ObjectMapper objectMapper;
     private static final int TEST_PORT = 3458;
     private static final String BASE_URL = "http://localhost:" + TEST_PORT;
     
@@ -31,8 +28,6 @@ class OsgiMcpServerJdkModeTest {
      */
     @BeforeEach
     void setUp() throws Exception {
-        objectMapper = new ObjectMapper();
-        
         // Find the JAR file
         File jarFile = new File("target/mcp-osgi-server-1.0.0-SNAPSHOT.jar");
         if (!jarFile.exists()) {

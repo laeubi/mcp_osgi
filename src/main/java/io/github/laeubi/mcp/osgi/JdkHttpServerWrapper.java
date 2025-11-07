@@ -127,19 +127,20 @@ public class JdkHttpServerWrapper {
         public ServletInputStream getInputStream() {
             return new ServletInputStream() {
                 private final InputStream in = exchange.getRequestBody();
+                private boolean finished = false;
                 
                 @Override
                 public int read() throws IOException {
-                    return in.read();
+                    int result = in.read();
+                    if (result == -1) {
+                        finished = true;
+                    }
+                    return result;
                 }
                 
                 @Override
                 public boolean isFinished() {
-                    try {
-                        return in.available() == 0;
-                    } catch (IOException e) {
-                        return true;
-                    }
+                    return finished;
                 }
                 
                 @Override
