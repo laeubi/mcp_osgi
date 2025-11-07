@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "osgi": {
+      "command": "java",
+      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar", "server", "3000"],
+      "url": "http://localhost:3000/mcp/sse"
+    }
+  }
+}
