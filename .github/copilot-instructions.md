@@ -154,6 +154,12 @@ To use with GitHub Copilot or other MCP clients, add this configuration:
 
 **Note:** The `tools` field is optional (tools are auto-discovered), but listing them makes it easy to see what's available.
 
+**Important:** For GitHub Copilot Coding Agent in GitHub Actions:
+- The repository includes `.mcp/config.json` with the correct configuration
+- Use `"type": "local"` (equivalent to "stdio") for stdio-based communication
+- **Do NOT include** `"server"` in the args array - this starts HTTP mode instead of stdio mode
+- The server defaults to stdio mode when run without arguments
+
 ## Project Structure
 
 ```

@@ -200,6 +200,29 @@ Then configure your MCP client to connect to the HTTP endpoint:
 
 For GitHub Copilot, place the configuration in your MCP settings file (typically `~/.mcp/settings.json` or as configured in your IDE).
 
+#### GitHub Copilot Coding Agent Configuration
+
+For GitHub Copilot Coding Agent in GitHub Actions, the repository includes a `.mcp/config.json` file with the correct configuration for stdio mode. This configuration is automatically used when the Copilot Coding Agent starts.
+
+The key points for GitHub Copilot Coding Agent:
+- Use `"type": "local"` for stdio-based communication
+- **Do NOT include** `"server"` in the args - this starts HTTP mode instead
+- The server will communicate via stdin/stdout when run without the `server` argument
+
+Example configuration (see `.mcp/config.json`):
+```json
+{
+  "mcpServers": {
+    "osgi": {
+      "type": "local",
+      "command": "java",
+      "args": ["-jar", "/home/runner/tools/osgi_mcp/server.jar"],
+      "tools": ["hello_osgi", "bundle_info", "find"]
+    }
+  }
+}
+```
+
 ## Project Structure
 
 ```
