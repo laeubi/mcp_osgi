@@ -23,9 +23,12 @@ import java.util.Map;
  * like GitHub Copilot.
  * 
  * The server supports three modes:
- * - stdio mode (default): Communicates via JSON-RPC 2.0 over stdio transport
- * - server mode: Runs an HTTP server with SSE (Server-Sent Events) transport using Jetty
- * - jdkserver mode: Runs a lightweight HTTP server using JDK's built-in http server
+ * - **stdio mode** (default): Communicates via JSON-RPC 2.0 over stdio transport.
+ *   Best for: Local IDE integration, process-based clients
+ * - **server mode**: Runs an HTTP server with SSE (Server-Sent Events) transport using Jetty (production-ready).
+ *   Best for: GitHub Copilot web UI, production deployments, advanced HTTP features
+ * - **jdkserver mode**: Runs a lightweight HTTP server using JDK's built-in httpserver (no external dependencies).
+ *   Best for: Development, testing, simple HTTP needs without Jetty overhead
  */
 public class OsgiMcpServer {
     
@@ -379,10 +382,10 @@ public class OsgiMcpServer {
      * Main entry point.
      * 
      * Usage:
-     *   java -jar mcp-osgi-server.jar                  # Start in stdio mode (default)
-     *   java -jar mcp-osgi-server.jar server           # Start in server mode (Jetty + SSE) on port 3000
+     *   java -jar mcp-osgi-server.jar                  # Start in stdio mode (default) - for local IDE
+     *   java -jar mcp-osgi-server.jar server           # Start in server mode (Jetty + SSE) on port 3000 - for production/GitHub web UI
      *   java -jar mcp-osgi-server.jar server 8080      # Start in server mode on port 8080
-     *   java -jar mcp-osgi-server.jar jdkserver        # Start in jdkserver mode (JDK HTTP) on port 8080
+     *   java -jar mcp-osgi-server.jar jdkserver        # Start in jdkserver mode (JDK HTTP) on port 8080 - for development/testing
      *   java -jar mcp-osgi-server.jar jdkserver 9000   # Start in jdkserver mode on port 9000
      */
     public static void main(String[] args) {
